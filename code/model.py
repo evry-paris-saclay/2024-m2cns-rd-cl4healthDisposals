@@ -1,4 +1,3 @@
-import torch
 import torch.nn as nn
 
 BATCH_SIZE = 16
@@ -13,7 +12,7 @@ class ConvModel(nn.Module):
         self.conv1 = nn.Conv2d(3, 16, 3)
         self.relu = nn.ReLU()
         self.conv2 = nn.Conv2d(16, 32, 3)
-        self.fc = nn.Linear(32 * 24 * 24, 13)
+        self.fc = nn.Linear(32 * 28 * 28, 13)
 
     def forward(self, x):
         x = self.conv1(x)
