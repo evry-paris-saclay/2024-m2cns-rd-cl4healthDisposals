@@ -28,16 +28,12 @@ class classifier(nn.Module):
 
 # create main model
 class TotalModel(nn.Module):
-    def __init__(self,input_dim,num_classes):
+    def __init__(self,class_input_dim,num_classes):
         super(TotalModel,self).__init__()
         self.backbones = nn.ModuleList([backbone() for _ in range(4)])
-        self.classifier = classifier(input_dim,num_classes)
+        self.classifier = classifier(class_input_dim,num_classes)
 
     def forward(self,x,task_idx):
-        """
-        params: 4个任务数据
-        result: 分类结果
-        """
         feature = self.backbones[task_idx](x)
         output = self.classifier(feature)
         return output
