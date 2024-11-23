@@ -17,4 +17,3 @@ def plot_metrics(epochs, train_values, val_values, ylabel, title, train_label="T
 
     if save_path:
         plt.savefig(save_path, dpi=300, bbox_inches="tight")
-    plt.show()

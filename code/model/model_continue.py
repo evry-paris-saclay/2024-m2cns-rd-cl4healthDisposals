@@ -2,8 +2,8 @@ import torch.nn as nn
 
 BATCH_SIZE = 16
 CHANNELS_IN = 1
-HEIGHT = 28
-WIDTH = 28
+HEIGHT = 60
+WIDTH = 36
 
 
 class ContinueModel(nn.Module):
@@ -12,7 +12,7 @@ class ContinueModel(nn.Module):
         self.conv1 = nn.Conv2d(3, 16, 3)
         self.relu = nn.ReLU()
         self.conv2 = nn.Conv2d(16, 32, 3)
-        self.fc = nn.Linear(32 * 28 * 28, 13)
+        self.fc = nn.Linear(32 * 60 * 36, 13)
 
     def forward(self, x):
         x = self.conv1(x)

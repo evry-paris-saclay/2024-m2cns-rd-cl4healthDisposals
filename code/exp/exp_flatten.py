@@ -16,7 +16,7 @@ from custom_dataset import CustomImageDataset
 from plot import plot_metrics
 
 def exp_flatten(device, custom_dataset):
-    training_loader, validation_loader = custom_dataset.create_task_loaders(custom_dataset.dataset.classes)
+    training_loader, validation_loader = custom_dataset.create_task_loaders(custom_dataset.dataset.classes, batch_size=16)
     model = ConvModel().to(device)
 
     loss_fn = nn.CrossEntropyLoss()
@@ -26,7 +26,7 @@ def exp_flatten(device, custom_dataset):
     val_losses = []
     train_accuracies = []
     val_accuracies = []
-    for epoch in range(1):
+    for epoch in range(30):
         model.train()
         running_loss = 0.0
         correct_predictions = 0
@@ -77,7 +77,6 @@ def exp_flatten(device, custom_dataset):
         val_accuracies.append(val_accuracy)
         print(f'Epoch [{epoch + 1}], Validation Loss: {val_running_loss / len(validation_loader):.4f}, Validation Accuracy: {val_accuracy:.2f}%')
 
-    # 绘制并保存损失曲线
     epochs = range(1, len(train_losses) + 1)
     plot_metrics(
         epochs=epochs,
@@ -90,7 +89,6 @@ def exp_flatten(device, custom_dataset):
         # save_path="training_validation_loss.png"
     )
 
-    # 绘制并保存准确率曲线
     epochs = range(1, len(val_losses) + 1)
     plot_metrics(
         epochs=epochs,

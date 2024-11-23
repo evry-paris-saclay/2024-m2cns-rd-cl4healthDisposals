@@ -26,14 +26,24 @@ class classifier(nn.Module):
         x = self.fc(x)
         return x
 
+
 # create main model
 class TotalModel(nn.Module):
-    def __init__(self,class_input_dim,num_classes):
+    def __init__(self,class_input_dim):
         super(TotalModel,self).__init__()
-        self.backbones = nn.ModuleList([backbone() for _ in range(4)])
-        self.classifier = classifier(class_input_dim,num_classes)
+        # self.backbones = nn.ModuleList([backbone() for _ in range(4)])
+        # self.classifier = classifier(class_input_dim,num_classes)
+        self.backbones = backbone()
+        self.head_tache1 = classifier(class_input_dim,6)
+        self.head_tache2 = classifier(class_input_dim,2)
+        self.head_tache3 = classifier(class_input_dim,5)
 
     def forward(self,x,task_idx):
-        feature = self.backbones[task_idx](x)
-        output = self.classifier(feature)
+        feature = self.backbones(x)
+        if task_idx == 0:
+            output = self.head_tache1(feature)
+        elif task_idx == 1:
+            output = self.head_tache2(feature)
+        else:
+            output = self.head_tache3(feature)
         return output

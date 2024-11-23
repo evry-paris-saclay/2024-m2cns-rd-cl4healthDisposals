@@ -6,9 +6,9 @@ HEIGHT = 60
 WIDTH = 36
 
 
-class ConvModel(nn.Module):
+class Model(nn.Module):
     def __init__(self):
-        super(ConvModel, self).__init__()
+        super(Model, self).__init__()
         self.conv1 = nn.Conv2d(3, 16, 3)
         self.relu = nn.ReLU()
         self.conv2 = nn.Conv2d(16, 32, 3)

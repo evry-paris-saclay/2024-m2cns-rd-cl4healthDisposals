@@ -44,14 +44,13 @@ def sample_from_replay_buffer():
     return torch.stack(sampled_inputs), torch.tensor(sampled_labels)
 
 
-def exp_continue(device, custom_dataset, tache1_classes, tache2_classes, tache3_classes, tache4_classes, BATCH_SIZE):
+def exp_continue(device, custom_dataset, tache1_classes, tache2_classes, tache3_classes, BATCH_SIZE):
     tache1_loader_train, tache1_loader_val = custom_dataset.create_task_loaders(tache1_classes, batch_size=BATCH_SIZE)
     tache2_loader_train, tache2_loader_val = custom_dataset.create_task_loaders(tache2_classes, batch_size=BATCH_SIZE)
     tache3_loader_train, tache3_loader_val = custom_dataset.create_task_loaders(tache3_classes, batch_size=BATCH_SIZE)
-    tache4_loader_train, tache4_loader_val = custom_dataset.create_task_loaders(tache4_classes, batch_size=BATCH_SIZE)
 
-    train_loaders = [tache1_loader_train, tache2_loader_train, tache3_loader_train, tache4_loader_train]
-    val_loaders = [tache1_loader_val, tache2_loader_val, tache3_loader_val, tache4_loader_val]
+    train_loaders = [tache1_loader_train, tache2_loader_train, tache3_loader_train]
+    val_loaders = [tache1_loader_val, tache2_loader_val, tache3_loader_val]
 
     learning_rate = 0.001
     num_epochs = 5
@@ -72,7 +71,6 @@ def exp_continue(device, custom_dataset, tache1_classes, tache2_classes, tache3_
 
     cumulative_val_loader = None
 
-    # 依次遍历每个任务的数据加载器
     for task_idx, train_loader in enumerate(train_loaders):
         print(f"\n=== Task {task_idx + 1} ===")
 
