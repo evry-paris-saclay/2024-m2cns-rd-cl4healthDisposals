@@ -27,7 +27,7 @@ def exp_mtl(device, custom_dataset, tache1_classes, tache2_classes, tache3_class
     tache2_loader_train, tache2_loader_val = custom_dataset.create_task_loaders(tache2_classes, batch_size=8)
     tache3_loader_train, tache3_loader_val = custom_dataset.create_task_loaders(tache3_classes, batch_size=20)
 
-    class_input_dim = 8 * (64 - 4) * (40 - 4)  # 根据卷积层计算
+    class_input_dim = 8 * (64 - 4) * (40 - 4)
     learning_rate = 0.001
     num_epochs = 30
 
@@ -42,12 +42,11 @@ def exp_mtl(device, custom_dataset, tache1_classes, tache2_classes, tache3_class
     all_labels = []
     all_probs = []
 
-    # 实例化模型
+    # Instantiate the model
     model = TotalModel(class_input_dim=class_input_dim).to(device)
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
-    # 训练和验证循环
     for epoch in range(num_epochs):
         print(f"\n=== Epoch {epoch + 1}/{num_epochs} ===")
         model.train()
@@ -62,7 +61,7 @@ def exp_mtl(device, custom_dataset, tache1_classes, tache2_classes, tache3_class
         for iteration in range(67):
             loss = 0
 
-            # 遍历每个任务的迭代器，获取一个 batch
+            # Traverse the iterator of each task and get a batch
             batch_data = [next(task_iter) for task_iter in task_iters]
             optimizer.zero_grad()
 
@@ -96,7 +95,6 @@ def exp_mtl(device, custom_dataset, tache1_classes, tache2_classes, tache3_class
         print(f"Train Loss: {avg_train_loss:.4f}, "
               f"Train Accuracy: {avg_train_acc:.2f}%")
 
-        # 验证阶段
         model.eval()
         val_loss, val_acc = 0, 0
         val_batches = 0
@@ -139,10 +137,8 @@ def exp_mtl(device, custom_dataset, tache1_classes, tache2_classes, tache3_class
             # torch.save(model.state_dict(), best_model_path)
             print(f"Model saved with Validation Loss: {min_val_loss:.4f}")
 
-    # 绘制训练和验证曲线
     epochs = range(1, num_epochs + 1)
 
-    # 绘制损失曲线
     plot_metrics(
         epochs=epochs,
         train_values=train_losses,
@@ -151,7 +147,6 @@ def exp_mtl(device, custom_dataset, tache1_classes, tache2_classes, tache3_class
         title="Training and Validation Loss"
     )
 
-    # 绘制准确率曲线
     plot_metrics(
         epochs=epochs,
         train_values=train_accuracies,

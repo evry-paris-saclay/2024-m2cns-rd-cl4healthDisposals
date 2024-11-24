@@ -28,7 +28,6 @@ def exp_specific(device, custom_dataset, tache1_classes, tache2_classes, tache3_
         (tache2_loader_train, tache2_loader_val),
         (tache3_loader_train, tache3_loader_val)
     ]):
-        # 实例化模型
         model = Model().to(device)
         criterion = nn.CrossEntropyLoss()
         optimizer = optim.Adam(model.parameters(), lr=learning_rate)
@@ -49,13 +48,11 @@ def exp_specific(device, custom_dataset, tache1_classes, tache2_classes, tache3_
 
                 optimizer.zero_grad()
 
-                # 前向传播
                 outputs = model(inputs)
                 loss = criterion(outputs, labels)
                 loss.backward()
                 optimizer.step()
 
-                # 计算准确率
                 _, preds = torch.max(outputs, 1)
                 acc = (preds == labels).sum().item() / labels.size(0)
                 total_loss += loss.item()
@@ -97,7 +94,6 @@ def exp_specific(device, custom_dataset, tache1_classes, tache2_classes, tache3_
         print(f"Average Validation Loss: {sum(task_val_losses) / len(task_val_losses):.4f}")
         print(f"Average Validation Accuracy: {sum(task_val_accuracies) / len(task_val_accuracies):.2f}%")
 
-        # 调用绘图函数
         epochs = list(range(1, num_epochs + 1))
         plot_metrics(
             epochs=epochs,

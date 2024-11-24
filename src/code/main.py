@@ -63,14 +63,13 @@ tache2_label_mapping = {label: global_label_mapping[label] for label in tache2_c
 tache3_label_mapping = {label: global_label_mapping[label] for label in tache3_classes}
 print("Tache 1 Mapping:", tache1_label_mapping)
 print("Tache 2 Mapping:", tache2_label_mapping)
-print("Tache 3 Mapping:", tache3_label_mapping)
-print("\n")
+print("Tache 3 Mapping:", tache3_label_mapping, "\n")
 
 
 def main():
-    exp_flatten(device, custom_dataset)
-    exp_specific(device, custom_dataset, tache1_classes, tache2_classes, tache3_classes, BATCH_SIZE=BATCH_SIZE)
-    exp_mtl(device, custom_dataset, tache1_classes, tache2_classes, tache3_classes, BATCH_SIZE=BATCH_SIZE)
+#     exp_flatten(device, custom_dataset)
+#     exp_specific(device, custom_dataset, tache1_classes, tache2_classes, tache3_classes, BATCH_SIZE=BATCH_SIZE)
+#     exp_mtl(device, custom_dataset, tache1_classes, tache2_classes, tache3_classes, BATCH_SIZE=BATCH_SIZE)
     exp_continue(device, custom_dataset, tache1_classes, tache2_classes, tache3_classes, BATCH_SIZE=BATCH_SIZE)
 
 if __name__ == '__main__':

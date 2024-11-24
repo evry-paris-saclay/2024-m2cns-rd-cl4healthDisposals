@@ -1,5 +1,10 @@
 import torch.nn as nn
 
+BATCH_SIZE = 16
+CHANNELS_IN = 1
+HEIGHT = 64-4
+WIDTH = 40-4
+
 
 class backbone(nn.Module):
     def __init__(self):
@@ -27,12 +32,9 @@ class classifier(nn.Module):
         return x
 
 
-# create main model
-class TotalModel(nn.Module):
+class ContinueModel(nn.Module):
     def __init__(self,class_input_dim):
-        super(TotalModel,self).__init__()
-        # self.backbones = nn.ModuleList([backbone() for _ in range(4)])
-        # self.classifier = classifier(class_input_dim,num_classes)
+        super(ContinueModel, self).__init__()
         self.backbones = backbone()
         self.head_tache1 = classifier(class_input_dim,6)
         self.head_tache2 = classifier(class_input_dim,2)

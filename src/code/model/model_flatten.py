@@ -6,9 +6,9 @@ HEIGHT = 60
 WIDTH = 36
 
 
-class ContinueModel(nn.Module):
+class ConvModel(nn.Module):
     def __init__(self):
-        super(ContinueModel, self).__init__()
+        super(ConvModel, self).__init__()
         self.conv1 = nn.Conv2d(3, 16, 3)
         self.relu = nn.ReLU()
         self.conv2 = nn.Conv2d(16, 32, 3)
@@ -19,6 +19,6 @@ class ContinueModel(nn.Module):
         x = self.relu(x)
         x = self.conv2(x)
         x = self.relu(x)
-        x = x.view(x.size(0), -1)  # 展平
+        x = x.view(x.size(0), -1)  # Flatten
         x = self.fc(x)
         return x
