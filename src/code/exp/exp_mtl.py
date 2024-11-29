@@ -1,25 +1,9 @@
-import numpy as np
-import random
 import torch
-from torchvision import datasets, transforms
-from torch.utils.data import DataLoader, random_split, Subset, ConcatDataset
-from torch.utils.data import Dataset
 import torch.nn as nn
 import torch.optim as optim
-from collections import Counter
 
-from sklearn.preprocessing import label_binarize
-from sklearn.metrics import roc_curve, auc, roc_auc_score
-
-from model.model_mtl import TotalModel, backbone, classifier
-from custom_dataset import CustomImageDataset
+from model.model_mtl import TotalModel
 from plot import plot_metrics
-
-import matplotlib
-import matplotlib.pyplot as plt
-
-# matplotlib.use('TkAgg')
-matplotlib.use('MacOSX')  # Using this if in MacOS
 
 
 def exp_mtl(device, custom_dataset, tache1_classes, tache2_classes, tache3_classes, BATCH_SIZE):
@@ -27,7 +11,7 @@ def exp_mtl(device, custom_dataset, tache1_classes, tache2_classes, tache3_class
     tache2_loader_train, tache2_loader_val = custom_dataset.create_task_loaders(tache2_classes, batch_size=8)
     tache3_loader_train, tache3_loader_val = custom_dataset.create_task_loaders(tache3_classes, batch_size=20)
 
-    class_input_dim = 8 * (64 - 4) * (40 - 4)
+    class_input_dim = 8 * (40 - 4) * (64 - 4)
     learning_rate = 0.001
     num_epochs = 30
 
@@ -38,9 +22,6 @@ def exp_mtl(device, custom_dataset, tache1_classes, tache2_classes, tache3_class
     train_accuracies = []
     val_losses = []
     val_accuracies = []
-
-    all_labels = []
-    all_probs = []
 
     # Instantiate the model
     model = TotalModel(class_input_dim=class_input_dim).to(device)
@@ -144,7 +125,8 @@ def exp_mtl(device, custom_dataset, tache1_classes, tache2_classes, tache3_class
         train_values=train_losses,
         val_values=val_losses,
         ylabel="Loss",
-        title="Training and Validation Loss"
+        title="Training and Validation Loss",
+        ylim=(-0.25, 2)
     )
 
     plot_metrics(
@@ -152,7 +134,8 @@ def exp_mtl(device, custom_dataset, tache1_classes, tache2_classes, tache3_class
         train_values=train_accuracies,
         val_values=val_accuracies,
         ylabel="Accuracy (%)",
-        title="Training and Validation Accuracy"
+        title="Training and Validation Accuracy",
+        ylim=(30, 105)
     )
 
     print("Experiment 2 Finished !")

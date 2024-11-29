@@ -1,46 +1,29 @@
-import numpy as np
-import random
 import torch
-from torchvision import datasets, transforms
-from torch.utils.data import DataLoader, random_split, Subset, ConcatDataset
-from torch.utils.data import Dataset
-import torch.nn as nn
-import torch.optim as optim
-from collections import Counter
-
-from sklearn.preprocessing import label_binarize
-from sklearn.metrics import roc_curve, auc, roc_auc_score
-
-from model.model_flatten import ConvModel
-from model.model_mtl import TotalModel, backbone, classifier
-from model.model_continue import ContinueModel
-
+from torchvision import transforms
 from custom_dataset import CustomImageDataset
-from plot import plot_metrics
+import random
+import os
+from PIL import Image
+import matplotlib.pyplot as plt
 
 from exp.exp_flatten import exp_flatten
 from exp.exp_specific import exp_specific
 from exp.exp_mtl import exp_mtl
-from exp.exp_continue import exp_continue
-
-import matplotlib
-import matplotlib.pyplot as plt
-
-# matplotlib.use('TkAgg')
-matplotlib.use('MacOSX')  # Using this if in MacOS
+from exp.exp_continual import exp_continual
 
 # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-device = torch.device('mpa' if torch.cuda.is_available() else 'cpu')  # Using this if in MacOS
+device = torch.device('mps' if torch.backends.mps.is_available() else 'cpu')  # Using this if in MacOS
 BATCH_SIZE = 16
 
 data_transform = transforms.Compose([
-    transforms.Resize((64, 40)),
+    transforms.Resize((40, 64)),
     transforms.ToTensor(),
     transforms.Normalize((0.5,), (0.5,))
 ])
 
 data_dir = '/Users/jiaqifeng/Downloads/Medical Waste 4.0'
 # dataset = datasets.ImageFolder(root=data_dir, transform=data_transform)
+random.seed(42)
 
 global_classes = [
     'glove_pair_latex', 'glove_pair_nitrile', 'glove_pair_surgery',
@@ -66,11 +49,72 @@ print("Tache 2 Mapping:", tache2_label_mapping)
 print("Tache 3 Mapping:", tache3_label_mapping, "\n")
 
 
+def sample_and_resize_images(data_dir, label_mapping, num_samples_per_class=2):
+    selected_images = {}
+    resized_images = []
+
+    for class_name, class_idx in label_mapping.items():
+        class_dir = os.path.join(data_dir, class_name)
+        if not os.path.exists(class_dir):
+            print(f"Class folder {class_name} does not exist.")
+            continue
+
+        image_files = [os.path.join(class_dir, img) for img in os.listdir(class_dir) if
+                       img.endswith(('.png', '.jpg', '.jpeg'))]
+        if len(image_files) < num_samples_per_class:
+            print(f"Less than {num_samples_per_class} images for class {class_name}")
+            continue
+
+        selected_files = random.sample(image_files, num_samples_per_class)
+        selected_images[class_name] = selected_files
+
+        for img_path in selected_files:
+            image = Image.open(img_path).convert("RGB")
+            resized_image = data_transform(image)
+            resized_images.append((resized_image, class_name))
+
+    return selected_images, resized_images
+
+
+def show_and_save_images(original_images, resized_images, output_dir="output_images"):
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
+    for class_name, orig_paths in original_images.items():
+        for i, orig_path in enumerate(orig_paths):
+            orig_image = Image.open(orig_path).convert("RGB")
+            plt.figure(figsize=(6, 3))
+            plt.imshow(orig_image)
+            plt.axis("off")
+            plt.title(f"Original - {class_name} (Sample {i + 1})")
+
+            save_path_orig = os.path.join(output_dir, f"{class_name}_original_{i + 1}.png")
+            plt.savefig(save_path_orig, dpi=300)
+            plt.show()
+            print(f"Saved original image: {save_path_orig}")
+
+            resized_image_tensor = [img_tensor for img_tensor, cname in resized_images if cname == class_name][i]
+            img_np = resized_image_tensor.permute(1, 2, 0).numpy()
+            img_np = (img_np * 0.5) + 0.5
+            plt.figure(figsize=(6, 3))
+            plt.imshow(img_np)
+            plt.axis("off")
+            plt.title(f"Resized - {class_name} (Sample {i + 1})")
+
+            save_path_resized = os.path.join(output_dir, f"{class_name}_resized_{i + 1}.png")
+            plt.savefig(save_path_resized, dpi=300)
+            plt.show()
+            print(f"Saved resized image: {save_path_resized}")
+
+
 def main():
-#     exp_flatten(device, custom_dataset)
-#     exp_specific(device, custom_dataset, tache1_classes, tache2_classes, tache3_classes, BATCH_SIZE=BATCH_SIZE)
-#     exp_mtl(device, custom_dataset, tache1_classes, tache2_classes, tache3_classes, BATCH_SIZE=BATCH_SIZE)
-    exp_continue(device, custom_dataset, tache1_classes, tache2_classes, tache3_classes, BATCH_SIZE=BATCH_SIZE)
+    # original_images, resized_images = sample_and_resize_images(data_dir, global_label_mapping)
+    # show_and_save_images(original_images, resized_images, output_dir="output_images")
+    # exp_flatten(device, custom_dataset)
+    exp_specific(device, custom_dataset, tache1_classes, tache2_classes, tache3_classes, BATCH_SIZE=BATCH_SIZE)
+    # exp_mtl(device, custom_dataset, tache1_classes, tache2_classes, tache3_classes, BATCH_SIZE=BATCH_SIZE)
+    # exp_continual(device, custom_dataset, tache1_classes, tache2_classes, tache3_classes, BATCH_SIZE=BATCH_SIZE)
+
 
 if __name__ == '__main__':
     main()

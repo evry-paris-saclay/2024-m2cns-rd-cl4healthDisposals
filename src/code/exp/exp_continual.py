@@ -1,19 +1,10 @@
-import numpy as np
 import random
 import torch
-from torchvision import datasets, transforms
-from torch.utils.data import DataLoader, random_split, Subset, ConcatDataset
-from torch.utils.data import Dataset
 import torch.nn as nn
 import torch.optim as optim
-from collections import Counter
 
-from sklearn.preprocessing import label_binarize
-from sklearn.metrics import roc_curve, auc, roc_auc_score
-
-from model.model_continue import ContinueModel
-from custom_dataset import CustomImageDataset
-from plot import plot_metrics, plot_metric_continue_train, plot_metric_continue_evalu
+from model.model_continual import ContinueModel
+from plot import plot_metric_continue_train, plot_metric_continue_evalu
 
 replay_buffer = []
 BUFFER_SIZE = 500  # Maximum buffer capacity
@@ -22,7 +13,6 @@ BUFFER_SAMPLE_SIZE = 64  # The size of each sample from the buffer
 
 # def add_to_replay_buffer(inputs, labels):
     # global replay_buffer
-
     # inputs, labels = inputs.detach().cpu(), labels.detach().cpu()
 
     # Iterate over each sample in the Batch and add them to the buffer one by one
@@ -43,7 +33,7 @@ BUFFER_SAMPLE_SIZE = 64  # The size of each sample from the buffer
     # return torch.stack(sampled_inputs), torch.tensor(sampled_labels)
 
 
-def exp_continue(device, custom_dataset, tache1_classes, tache2_classes, tache3_classes, BATCH_SIZE):
+def exp_continual(device, custom_dataset, tache1_classes, tache2_classes, tache3_classes, BATCH_SIZE):
     tache1_loader_train, tache1_loader_val = custom_dataset.create_task_loaders(tache1_classes, batch_size=BATCH_SIZE)
     tache2_loader_train, tache2_loader_val = custom_dataset.create_task_loaders(tache2_classes, batch_size=BATCH_SIZE)
     tache3_loader_train, tache3_loader_val = custom_dataset.create_task_loaders(tache3_classes, batch_size=BATCH_SIZE)
@@ -51,7 +41,7 @@ def exp_continue(device, custom_dataset, tache1_classes, tache2_classes, tache3_
     train_loaders = [tache1_loader_train, tache2_loader_train, tache3_loader_train]
     val_loaders = [tache1_loader_val, tache2_loader_val, tache3_loader_val]
 
-    class_input_dim = 8 * (64 - 4) * (40 - 4)
+    class_input_dim = 8 * (40 - 4) * (64 - 4)
     learning_rate = 0.001
     num_epochs = 5
     min_val_loss = float('inf')
@@ -181,7 +171,8 @@ def exp_continue(device, custom_dataset, tache1_classes, tache2_classes, tache3_
         train_values_t2=train_losses_t2,
         train_values_t3=train_losses_t3,
         ylabel="Loss",
-        title="Training Loss"
+        title="Training Loss",
+        ylim=(-0.25, 2)
     )
 
     plot_metric_continue_train(
@@ -190,7 +181,8 @@ def exp_continue(device, custom_dataset, tache1_classes, tache2_classes, tache3_
         train_values_t2=train_accuracies_t2,
         train_values_t3=train_accuracies_t3,
         ylabel="Accuracy (%)",
-        title="Training  Accuracy"
+        title="Training  Accuracy",
+        ylim=(30, 105)
     )
 
     num_task=3
@@ -201,7 +193,8 @@ def exp_continue(device, custom_dataset, tache1_classes, tache2_classes, tache3_
         evalu_values_t2=val_accuracies_t2,
         evalu_values_t3=val_accuracies_t3,
         ylabel="Accuracy (%)",
-        title="Validation Accuracy"
+        title="Validation Accuracy",
+        ylim=(30, 105)
     )
 
     print("Experiment 3 Finished !")

@@ -1,19 +1,10 @@
-import numpy as np
-import random
 import torch
-from torchvision import datasets, transforms
-from torch.utils.data import DataLoader, random_split, Subset, ConcatDataset
-from torch.utils.data import Dataset
 import torch.nn as nn
 import torch.optim as optim
-from collections import Counter
-
-from sklearn.preprocessing import label_binarize
-from sklearn.metrics import roc_curve, auc, roc_auc_score
 
 from model.model_specific import Model
-from custom_dataset import CustomImageDataset
 from plot import plot_metrics
+
 
 def exp_specific(device, custom_dataset, tache1_classes, tache2_classes, tache3_classes, BATCH_SIZE):
     tache1_loader_train, tache1_loader_val = custom_dataset.create_task_loaders(tache1_classes, batch_size=BATCH_SIZE)
@@ -103,6 +94,7 @@ def exp_specific(device, custom_dataset, tache1_classes, tache2_classes, tache3_
             title=f"Task {task_idx + 1} Loss Over Epochs",
             train_label="Training",
             val_label="Validation",
+            ylim=(-0.25, 2)
             # save_path=f"task_{task_idx + 1}_loss.png"
         )
         plot_metrics(
@@ -113,6 +105,7 @@ def exp_specific(device, custom_dataset, tache1_classes, tache2_classes, tache3_
             title=f"Task {task_idx + 1} Accuracy Over Epochs",
             train_label="Training",
             val_label="Validation",
+            ylim=(30, 105)
             # save_path=f"task_{task_idx + 1}_accuracy.png"
         )
 

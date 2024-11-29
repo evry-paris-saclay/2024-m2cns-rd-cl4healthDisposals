@@ -1,19 +1,10 @@
-import numpy as np
-import random
 import torch
-from torchvision import datasets, transforms
-from torch.utils.data import DataLoader, random_split, Subset, ConcatDataset
-from torch.utils.data import Dataset
 import torch.nn as nn
 import torch.optim as optim
-from collections import Counter
-
-from sklearn.preprocessing import label_binarize
-from sklearn.metrics import roc_curve, auc, roc_auc_score
 
 from model.model_flatten import ConvModel
-from custom_dataset import CustomImageDataset
 from plot import plot_metrics
+
 
 def exp_flatten(device, custom_dataset):
     training_loader, validation_loader = custom_dataset.create_task_loaders(custom_dataset.dataset.classes, batch_size=16)
@@ -85,7 +76,8 @@ def exp_flatten(device, custom_dataset):
         ylabel="Loss",
         title="Training and Validation Loss",
         train_label="Training",
-        val_label="Validation"
+        val_label="Validation",
+        ylim=(-0.25, 2)
         # save_path="training_validation_loss.png"
     )
 
@@ -97,7 +89,8 @@ def exp_flatten(device, custom_dataset):
         ylabel="Accuracy",
         title="Training and Validation Accuracy",
         train_label="Training",
-        val_label="Validation"
+        val_label="Validation",
+        ylim=(30, 105)
         # save_path="training_validation_accuracy.png"
     )
 
