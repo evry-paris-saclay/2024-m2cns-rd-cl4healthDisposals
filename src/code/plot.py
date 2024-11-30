@@ -1,6 +1,8 @@
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
+import seaborn as sns
+from sklearn.metrics import confusion_matrix
 
 # matplotlib.use('TkAgg')
 matplotlib.use('MacOSX')  # Using this if in MacOS
@@ -78,3 +80,15 @@ def plot_metric_continue_evalu(task, evalu_values_t1, evalu_values_t2, evalu_val
 
     if save_path:
         plt.savefig(save_path, dpi=300, bbox_inches="tight")
+
+
+def plot_confusion_matrix(all_labels, all_predictions, class_names):
+    cm = confusion_matrix(all_labels, all_predictions, labels=np.arange(len(class_names)))
+    plt.figure(figsize=(8, 8))
+    sns.heatmap(cm, annot=True, fmt='g', cmap='Blues', xticklabels=class_names, yticklabels=class_names)
+    plt.title("Confusion Matrix")
+    plt.xlabel("Predicted Label")
+    plt.ylabel("True Label")
+    plt.xticks(rotation=45)
+    plt.yticks(rotation=0)
+    plt.show()

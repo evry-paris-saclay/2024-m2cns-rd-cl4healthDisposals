@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.optim as optim
 
 from model.model_specific import Model
-from plot import plot_metrics
+from plot import plot_metrics, plot_confusion_matrix
 
 
 def exp_specific(device, custom_dataset, tache1_classes, tache2_classes, tache3_classes, BATCH_SIZE):
@@ -14,10 +14,10 @@ def exp_specific(device, custom_dataset, tache1_classes, tache2_classes, tache3_
     num_epochs = 30
     learning_rate = 0.001
 
-    for task_idx, (train_loader, val_loader) in enumerate([
-        (tache1_loader_train, tache1_loader_val),
-        (tache2_loader_train, tache2_loader_val),
-        (tache3_loader_train, tache3_loader_val)
+    for task_idx, (train_loader, val_loader, task_classes) in enumerate([
+        (tache1_loader_train, tache1_loader_val, tache1_classes),
+        (tache2_loader_train, tache2_loader_val, tache2_classes),
+        (tache3_loader_train, tache3_loader_val, tache3_classes)
     ]):
         model = Model().to(device)
         criterion = nn.CrossEntropyLoss()
@@ -60,8 +60,13 @@ def exp_specific(device, custom_dataset, tache1_classes, tache2_classes, tache3_
             model.eval()
             val_loss, val_acc = 0, 0
             val_batches = 0
+            all_labels = []
+            all_predictions = []
 
             with torch.no_grad():
+                offset = sum(len(task) for task in [tache1_classes, tache2_classes][:task_idx])
+                print(f"Task {task_idx + 1}: Offset = {offset}")
+
                 for val_inputs, val_labels in val_loader:
                     val_inputs = val_inputs.to(device)
                     val_labels = val_labels.to(device)
@@ -71,6 +76,18 @@ def exp_specific(device, custom_dataset, tache1_classes, tache2_classes, tache3_
                     _, val_preds = torch.max(val_outputs, 1)
                     val_acc += (val_preds == val_labels).sum().item() / val_labels.size(0)
                     val_batches += 1
+
+                    if task_idx == 1:  # Task 2
+                        val_labels = val_labels - 6
+                        val_preds = val_preds - 6
+                    elif task_idx == 2:  # Task 3
+                        val_labels = val_labels - 8
+                        val_preds = val_preds - 8
+
+                    # print(f"Batch adjusted labels: {val_labels.cpu().numpy()}")
+                    # print(f"Batch adjusted predictions: {val_preds.cpu().numpy()}")
+                    all_labels.extend(val_labels.cpu().numpy())
+                    all_predictions.extend(val_preds.cpu().numpy())
 
             avg_val_loss = val_loss / val_batches
             avg_val_acc = val_acc / val_batches * 100
@@ -84,6 +101,8 @@ def exp_specific(device, custom_dataset, tache1_classes, tache2_classes, tache3_
         print(f"Average Train Accuracy: {sum(task_train_accuracies) / len(task_train_accuracies):.2f}%")
         print(f"Average Validation Loss: {sum(task_val_losses) / len(task_val_losses):.4f}")
         print(f"Average Validation Accuracy: {sum(task_val_accuracies) / len(task_val_accuracies):.2f}%")
+
+        plot_confusion_matrix(all_labels, all_predictions, task_classes)
 
         epochs = list(range(1, num_epochs + 1))
         plot_metrics(
@@ -109,4 +128,4 @@ def exp_specific(device, custom_dataset, tache1_classes, tache2_classes, tache3_
             # save_path=f"task_{task_idx + 1}_accuracy.png"
         )
 
-    print("Experiment for each task Finished !")
+    print("Experiment 2 Finished !")

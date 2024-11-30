@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.optim as optim
 
 from model.model_mtl import TotalModel
-from plot import plot_metrics
+from plot import plot_metrics, plot_confusion_matrix
 
 
 def exp_mtl(device, custom_dataset, tache1_classes, tache2_classes, tache3_classes, BATCH_SIZE):
@@ -22,6 +22,8 @@ def exp_mtl(device, custom_dataset, tache1_classes, tache2_classes, tache3_class
     train_accuracies = []
     val_losses = []
     val_accuracies = []
+    all_labels = []
+    all_predictions = []
 
     # Instantiate the model
     model = TotalModel(class_input_dim=class_input_dim).to(device)
@@ -79,9 +81,8 @@ def exp_mtl(device, custom_dataset, tache1_classes, tache2_classes, tache3_class
         model.eval()
         val_loss, val_acc = 0, 0
         val_batches = 0
-
-        epoch_labels = []
-        epoch_probs = []
+        all_preds_overall = []
+        all_labels_overall = []
 
         task_loaders_val = [tache1_loader_val, tache2_loader_val, tache3_loader_val]
         task_iters_val = [iter(loader) for loader in task_loaders]
@@ -106,6 +107,15 @@ def exp_mtl(device, custom_dataset, tache1_classes, tache2_classes, tache3_class
                     val_acc += (val_preds == val_labels).sum().item() / val_labels.size(0)
                     val_batches += 1
 
+                    if task_idx == 1:  # Task 2
+                        val_labels = val_labels + 6
+                        val_preds = val_preds + 6
+                    elif task_idx == 2:  # Task 3
+                        val_labels = val_labels + 8
+                        val_preds = val_preds + 8
+                    all_preds_overall.extend(val_preds.cpu().numpy())
+                    all_labels_overall.extend(val_labels.cpu().numpy())
+
         avg_val_loss = val_loss / val_batches
         avg_val_acc = val_acc / val_batches * 100
         val_losses.append(avg_val_loss)
@@ -118,8 +128,10 @@ def exp_mtl(device, custom_dataset, tache1_classes, tache2_classes, tache3_class
             # torch.save(model.state_dict(), best_model_path)
             print(f"Model saved with Validation Loss: {min_val_loss:.4f}")
 
-    epochs = range(1, num_epochs + 1)
+    class_names = custom_dataset.dataset.classes
+    plot_confusion_matrix(all_preds_overall, all_labels_overall, class_names)
 
+    epochs = range(1, num_epochs + 1)
     plot_metrics(
         epochs=epochs,
         train_values=train_losses,
@@ -138,4 +150,4 @@ def exp_mtl(device, custom_dataset, tache1_classes, tache2_classes, tache3_class
         ylim=(30, 105)
     )
 
-    print("Experiment 2 Finished !")
+    print("Experiment 3 Finished !")

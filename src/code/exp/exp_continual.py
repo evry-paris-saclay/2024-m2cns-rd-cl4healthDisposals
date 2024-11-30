@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch.optim as optim
 
 from model.model_continual import ContinueModel
-from plot import plot_metric_continue_train, plot_metric_continue_evalu
+from plot import plot_metric_continue_train, plot_metric_continue_evalu, plot_confusion_matrix
 
 replay_buffer = []
 BUFFER_SIZE = 500  # Maximum buffer capacity
@@ -43,7 +43,7 @@ def exp_continual(device, custom_dataset, tache1_classes, tache2_classes, tache3
 
     class_input_dim = 8 * (40 - 4) * (64 - 4)
     learning_rate = 0.001
-    num_epochs = 5
+    num_epochs = 30
     min_val_loss = float('inf')
 
     train_losses_t1 = []
@@ -124,6 +124,9 @@ def exp_continual(device, custom_dataset, tache1_classes, tache2_classes, tache3
 
         print(f"\n=== Validation after Training Task {task_idx + 1} ===")
         model.eval()
+        all_preds_overall = []
+        all_labels_overall = []
+
         for eval_task_idx, val_loader in enumerate(val_loaders[:task_idx + 1]):
             val_total_loss, val_total_acc, val_batches = 0, 0, 0
             with torch.no_grad():
@@ -145,6 +148,15 @@ def exp_continual(device, custom_dataset, tache1_classes, tache2_classes, tache3
                     val_total_acc += val_acc
                     val_batches += 1
 
+                    if eval_task_idx == 1:  # Task 2
+                        labels = labels + 6
+                        preds = preds + 6
+                    elif eval_task_idx == 2:  # Task 3
+                        labels = labels + 8
+                        preds = preds + 8
+                    all_preds_overall.extend(preds.cpu().numpy())
+                    all_labels_overall.extend(labels.cpu().numpy())
+
             avg_val_loss = val_total_loss / val_batches
             avg_val_acc = val_total_acc / val_batches * 100
             if eval_task_idx == 0:
@@ -163,8 +175,10 @@ def exp_continual(device, custom_dataset, tache1_classes, tache2_classes, tache3
                 # torch.save(model.state_dict(), f"/Users/jiaqifeng/PycharmProjects/Python_RD/checkpoint/best_model_task{task_idx}.pth")
                 # print(f"Model for Task {task_idx + 1} saved.")
 
-    epochs = range(1, num_epochs + 1)
+    class_names = custom_dataset.dataset.classes
+    plot_confusion_matrix(all_preds_overall, all_labels_overall, class_names)
 
+    epochs = range(1, num_epochs + 1)
     plot_metric_continue_train(
         epochs=epochs,
         train_values_t1=train_losses_t1,
@@ -197,4 +211,4 @@ def exp_continual(device, custom_dataset, tache1_classes, tache2_classes, tache3
         ylim=(30, 105)
     )
 
-    print("Experiment 3 Finished !")
+    print("Experiment 4 Finished !")
