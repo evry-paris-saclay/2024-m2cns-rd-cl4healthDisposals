@@ -60,15 +60,15 @@ def plot_metric_continue_evalu(task, evalu_values_t1, evalu_values_t2, evalu_val
     evalu_values_t3_modified = evalu_values_t3.copy()
     evalu_values_t3_modified[0] = np.nan
     evalu_values_t3_modified[1] = np.nan
-    plt.plot(task, evalu_values_t1, label=f"Version1 {ylabel}", marker='o')
-    plt.plot(task, evalu_values_t2_modified, label=f"Version2 {ylabel}", marker='o')
-    plt.plot(task, evalu_values_t3_modified, label=f"Version3 {ylabel}", marker='o')
-    plt.xlabel("Task")
+    plt.plot(task, evalu_values_t1, label=f"Task 1 {ylabel}", marker='o')
+    plt.plot(task, evalu_values_t2_modified, label=f"Task 2 {ylabel}", marker='o')
+    plt.plot(task, evalu_values_t3_modified, label=f"Task 3 {ylabel}", marker='o')
+    plt.xlabel("Version of Model")
     plt.ylabel(ylabel)
     plt.title(title)
     plt.legend()
     plt.grid()
-    plt.xticks(np.arange(1, 3, 1))
+    plt.xticks(np.arange(1, 4, 1))
 
     if ylim:
         plt.ylim(ylim)
