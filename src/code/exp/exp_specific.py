@@ -13,13 +13,14 @@ def exp_specific(device, custom_dataset, tache1_classes, tache2_classes, tache3_
 
     num_epochs = 30
     learning_rate = 0.001
+    class_input_dim = 32 * (40 - 4) * (64 - 4)
 
     for task_idx, (train_loader, val_loader, task_classes) in enumerate([
         (tache1_loader_train, tache1_loader_val, tache1_classes),
         (tache2_loader_train, tache2_loader_val, tache2_classes),
         (tache3_loader_train, tache3_loader_val, tache3_classes)
     ]):
-        model = Model().to(device)
+        model = Model(class_input_dim).to(device)
         criterion = nn.CrossEntropyLoss()
         optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
@@ -39,7 +40,13 @@ def exp_specific(device, custom_dataset, tache1_classes, tache2_classes, tache3_
 
                 optimizer.zero_grad()
 
-                outputs = model(inputs)
+                if task_idx == 1:  # Task 2
+                    labels = labels - 6
+                elif task_idx == 2:  # Task 3
+                    labels = labels - 8
+
+                outputs = model(inputs, task_idx)
+
                 loss = criterion(outputs, labels)
                 loss.backward()
                 optimizer.step()
@@ -70,7 +77,12 @@ def exp_specific(device, custom_dataset, tache1_classes, tache2_classes, tache3_
                 for val_inputs, val_labels in val_loader:
                     val_inputs = val_inputs.to(device)
                     val_labels = val_labels.to(device)
-                    val_outputs = model(val_inputs)
+                    if task_idx == 1:  # Task 2
+                        val_labels = val_labels - 6
+                    elif task_idx == 2:  # Task 3
+                        val_labels = val_labels - 8
+
+                    val_outputs = model(val_inputs, task_idx)
 
                     val_loss += criterion(val_outputs, val_labels).item()
                     _, val_preds = torch.max(val_outputs, 1)
@@ -84,8 +96,7 @@ def exp_specific(device, custom_dataset, tache1_classes, tache2_classes, tache3_
                         val_labels = val_labels - 8
                         val_preds = val_preds - 8
 
-                    # print(f"Batch adjusted labels: {val_labels.cpu().numpy()}")
-                    # print(f"Batch adjusted predictions: {val_preds.cpu().numpy()}")
+
                     all_labels.extend(val_labels.cpu().numpy())
                     all_predictions.extend(val_preds.cpu().numpy())
 
