@@ -199,7 +199,7 @@ def exp_continual(device, custom_dataset, tache1_classes, tache2_classes, tache3
         ylim=(30, 105)
     )
 
-    num_task=3
+    num_task = 3
     task = range(1, num_task + 1)
     plot_metric_continue_evalu(
         task=task,

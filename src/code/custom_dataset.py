@@ -6,6 +6,7 @@ import torch.nn as nn
 import torch.optim as optim
 from collections import Counter
 
+
 class CustomImageDataset(Dataset):
     def __init__(self,data_dir,class2idx,transform=None):
         self.data_dir = data_dir

@@ -4,6 +4,10 @@ import numpy as np
 import seaborn as sns
 from sklearn.metrics import confusion_matrix
 
+from sklearn.cluster import AgglomerativeClustering, KMeans
+from sklearn.metrics.pairwise import euclidean_distances
+from sklearn.metrics import silhouette_score
+
 # matplotlib.use('TkAgg')
 matplotlib.use('MacOSX')  # Using this if in MacOS
 
@@ -91,4 +95,43 @@ def plot_confusion_matrix(all_labels, all_predictions, class_names):
     plt.ylabel("True Label")
     plt.xticks(rotation=45)
     plt.yticks(rotation=0)
+    plt.show()
+
+
+def determine_optimal_clusters_silhouette(class_centroids, max_clusters=10):
+    centroids = np.array(list(class_centroids.values()))
+    distance_matrix = euclidean_distances(centroids, centroids)
+    silhouette_scores = []
+    for n_clusters in range(2, max_clusters + 1):
+        clustering = AgglomerativeClustering(n_clusters=n_clusters, metric='precomputed', linkage='average')
+        labels = clustering.fit_predict(distance_matrix)
+        score = silhouette_score(distance_matrix, labels, metric='precomputed')
+        silhouette_scores.append(score)
+
+    # Plot silhouette scores
+    plt.plot(range(2, max_clusters + 1), silhouette_scores, marker='o')
+    plt.xlabel('Number of Clusters')
+    plt.ylabel('Silhouette Score')
+    plt.title('Silhouette Method')
+    plt.show()
+
+    # Return the optimal number of clusters
+    return np.argmax(silhouette_scores) + 2  # +2 because range starts from 2
+
+
+def determine_optimal_clusters(class_centroids, max_clusters=10):
+    centroids = np.array(list(class_centroids.values()))
+    sse = []
+    for n_clusters in range(2, max_clusters + 1):
+        # Perform KMeans clustering
+        kmeans = KMeans(n_clusters=n_clusters, random_state=42)
+        kmeans.fit(centroids)
+        # Compute SSE using KMeans inertia
+        sse.append(kmeans.inertia_)
+
+    # Plot the elbow curve
+    plt.plot(range(2, max_clusters + 1), sse, marker='o')
+    plt.xlabel('Number of Clusters')
+    plt.ylabel('SSE')
+    plt.title('Elbow Method')
     plt.show()

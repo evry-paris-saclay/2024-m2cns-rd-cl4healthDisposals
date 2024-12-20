@@ -5,6 +5,7 @@ CHANNELS_IN = 1
 HEIGHT = 36
 WIDTH = 60
 
+
 class backbone(nn.Module):
     def __init__(self):
         super(backbone, self).__init__()
