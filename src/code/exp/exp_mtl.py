@@ -15,7 +15,7 @@ def exp_mtl(device, custom_dataset, tache1_classes, tache2_classes, tache3_class
     learning_rate = 0.001
     num_epochs = 30
 
-    # best_model_path = '/Users/jiaqifeng/PycharmProjects/Python_RD/checkpoint/best_model.pth'
+    # best_model_path = '/Users/jiaqifeng/PycharmProjects/Python_RD/checkpoint/best_model_mtl.pth'
     min_val_loss = float('inf')
 
     train_losses = []

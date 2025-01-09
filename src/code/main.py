@@ -1,4 +1,6 @@
 import torch
+from torch.utils.data import Subset
+
 from custom_dataset import CustomImageDataset
 import random
 import os
@@ -6,7 +8,10 @@ from PIL import Image
 import matplotlib.pyplot as plt
 from torchvision import transforms, datasets
 
-from task2vec import compute_fisher_information
+from task2vec.aws_cv_task2vec.task2vec import Task2Vec
+from task2vec.aws_cv_task2vec import task_similarity
+
+# from task2vec import compute_fisher_information
 from model.model_resnet import resnet_model
 from distance import generate_tasks
 from exp.exp_flatten import exp_flatten
@@ -113,15 +118,53 @@ def show_and_save_images(original_images, resized_images, output_dir="output_ima
 
 
 def main():
-    model = resnet_model(global_classes, custom_dataset, device, BATCH_SIZE=BATCH_SIZE)
-    task_vectors = compute_fisher_information(model, global_classes, custom_dataset, device)
+    # model = resnet_model(global_classes, custom_dataset, device, BATCH_SIZE=BATCH_SIZE)
+    model = torch.load('checkpoint/best_model.pth')
 
-    num_tasks = 5
-    kmeans = KMeans(n_clusters=num_tasks, random_state=42)
-    labels = kmeans.fit_predict(task_vectors)
+    # num_tasks = 5
+    # kmeans = KMeans(n_clusters=num_tasks, random_state=42)
+    # labels = kmeans.fit_predict(task_vectors)
+    #
+    # for i, label in enumerate(labels):
+    #     print(f"Class {global_classes[i]} is assigned to task {label}")
 
-    for i, label in enumerate(labels):
-        print(f"Class {global_classes[i]} is assigned to task {label}")
+    # embedding = Task2Vec(model).embed(custom_dataset)
+
+    embeddings = []
+    dataset_names = []
+    dataset_list = []
+    for class_name, class_id in global_label_mapping.items():
+        print(f"Processing class: {class_name}")
+        indices = custom_dataset.get_task_subset_indices([class_name])
+        if len(indices) == 0:
+            print(f"No samples found for class {class_name}")
+            continue
+
+        subset = Subset(custom_dataset, indices)
+        dataset_list.append(subset)
+        dataset_names.append(class_name)
+        print(f"Class {class_name} has {len(subset)} samples.")
+
+    for name, dataset in zip(dataset_names, dataset_list):
+        print(f"Embedding {name}")
+        probe_network = model.to(device)
+        embedding = Task2Vec(probe_network, max_samples=1000, skip_layers=6).embed(dataset)
+        print(f"Embedding for {name}: Hessian shape: {embedding.hessian.shape}, Scale shape: {embedding.scale.shape}")
+        embeddings.append(embedding)
+        print(f"embedding: {embedding}")
+        print(f"embeddings: {embeddings}")
+        print(f"Number of embeddings: {len(embeddings)}")
+
+    # Compute distance matrix
+    from scipy.spatial.distance import pdist, squareform
+    cond_distance_matrix = pdist([embedding.hessian for embedding in embeddings])
+
+    if cond_distance_matrix.size == 0:
+        raise ValueError("Distance matrix is empty. Check embeddings for validity.")
+
+    print(f"Distance Matrix: {cond_distance_matrix}")
+
+    task_similarity.plot_distance_matrix(embeddings, dataset_names)
 
     # generate_tasks(global_classes, custom_dataset, device, BATCH_SIZE=BATCH_SIZE)
 

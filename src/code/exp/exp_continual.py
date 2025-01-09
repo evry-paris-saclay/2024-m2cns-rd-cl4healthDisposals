@@ -170,10 +170,10 @@ def exp_continual(device, custom_dataset, tache1_classes, tache2_classes, tache3
                 val_accuracies_t3.append(avg_val_acc)
             print(f"Val Loss: {avg_val_loss:.4f}, Val Accuracy: {avg_val_acc:.2f}%")
 
-            # if avg_val_loss < min_val_loss:
-                # min_val_loss = avg_val_loss
-                # torch.save(model.state_dict(), f"/Users/jiaqifeng/PycharmProjects/Python_RD/checkpoint/best_model_task{task_idx}.pth")
-                # print(f"Model for Task {task_idx + 1} saved.")
+            if avg_val_loss < min_val_loss:
+                min_val_loss = avg_val_loss
+                # torch.save(model.state_dict(), f"/Users/jiaqifeng/PycharmProjects/Python_RD/checkpoint/best_model_continual_task{task_idx}.pth")
+                print(f"Model for Task {task_idx + 1} saved.")
 
     class_names = custom_dataset.dataset.classes
     plot_confusion_matrix(all_preds_overall, all_labels_overall, class_names)
