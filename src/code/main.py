@@ -1,5 +1,6 @@
+import numpy as np
 import torch
-from torch.utils.data import Subset
+from torch.utils.data import Subset, DataLoader
 
 from custom_dataset import CustomImageDataset
 import random
@@ -10,8 +11,11 @@ from torchvision import transforms, datasets
 
 from task2vec.aws_cv_task2vec.task2vec import Task2Vec
 from task2vec.aws_cv_task2vec import task_similarity
+from leep.leep import log_expected_empirical_prediction as leep, plot_distance_matrix_leep
 
-# from task2vec import compute_fisher_information
+# Compute distance matrix
+from scipy.spatial.distance import pdist, squareform
+
 from model.model_resnet import resnet_model
 from distance import generate_tasks
 from exp.exp_flatten import exp_flatten
@@ -117,9 +121,10 @@ def show_and_save_images(original_images, resized_images, output_dir="output_ima
             print(f"Saved resized image: {save_path_resized}")
 
 
-def main():
+def function_task2vec(global_classes, custom_dataset, device, BATCH_SIZE=BATCH_SIZE):
     # model = resnet_model(global_classes, custom_dataset, device, BATCH_SIZE=BATCH_SIZE)
-    model = torch.load('checkpoint/best_model.pth')
+    model = torch.load('checkpoint/best_model.pth', weights_only=False)
+    model.eval()
 
     # num_tasks = 5
     # kmeans = KMeans(n_clusters=num_tasks, random_state=42)
@@ -130,6 +135,7 @@ def main():
 
     # embedding = Task2Vec(model).embed(custom_dataset)
 
+    # 获取数据集中的类名及数据
     embeddings = []
     dataset_names = []
     dataset_list = []
@@ -145,6 +151,7 @@ def main():
         dataset_names.append(class_name)
         print(f"Class {class_name} has {len(subset)} samples.")
 
+    # 绘制任务之间的距离矩阵
     for name, dataset in zip(dataset_names, dataset_list):
         print(f"Embedding {name}")
         probe_network = model.to(device)
@@ -155,16 +162,74 @@ def main():
         print(f"embeddings: {embeddings}")
         print(f"Number of embeddings: {len(embeddings)}")
 
-    # Compute distance matrix
-    from scipy.spatial.distance import pdist, squareform
+    # 计算 Hessian 矩阵的成对距离
     cond_distance_matrix = pdist([embedding.hessian for embedding in embeddings])
 
     if cond_distance_matrix.size == 0:
         raise ValueError("Distance matrix is empty. Check embeddings for validity.")
-
     print(f"Distance Matrix: {cond_distance_matrix}")
 
     task_similarity.plot_distance_matrix(embeddings, dataset_names)
+
+
+def function_leep(global_classes, custom_dataset, device, BATCH_SIZE=BATCH_SIZE):
+    model = torch.load('checkpoint/best_model.pth', weights_only=False).to(device)
+    model.eval()
+
+    dataset_names = []
+    dataset_list = []
+    leep_scores = []  # 存储每个类的 LEEP 分数
+
+    # 处理每个类，创建数据子集
+    for class_name, class_id in global_label_mapping.items():
+        print(f"Processing class: {class_name}")
+        indices = custom_dataset.get_task_subset_indices([class_name])
+        if len(indices) == 0:
+            print(f"No samples found for class {class_name}")
+            continue
+
+        # subset = Subset(custom_dataset, indices)
+        # dataset_list.append(subset)
+        loader_train = custom_dataset.create_subset_loaders([class_name], batch_size=BATCH_SIZE)
+        dataset_names.append(class_name)
+        print(f"Class {class_name} has {len(indices)} samples.")
+
+        # 计算当前任务的 LEEP 分数
+        predictions = []
+        targets = []
+        print(f"Calculating LEEP for {class_name}")
+        with torch.no_grad():
+            for inputs, labels in loader_train:  # 使用训练集加载器
+                inputs = inputs.to(device)
+                # print(f"Input shape: {inputs.shape}")  # 检查输入形状是否正确
+                outputs = model(inputs)  # 获取模型预测
+                predictions.append(outputs.cpu().numpy())
+                targets.append(labels.cpu().numpy())
+
+        # 转换为 numpy 数组
+        predictions = np.vstack(predictions)
+        targets = np.concatenate(targets)
+
+        # 计算 LEEP 分数
+        score = leep(predictions, targets)
+        print(f"LEEP Score for {class_name}: {score}")
+        leep_scores.append(score)
+
+    # 如果需要进一步分析任务相似性，可以使用 LEEP 分数构建任务间距离矩阵
+    print("Calculating pairwise distances between tasks...")
+    cond_distance_matrix = pdist(np.array(leep_scores).reshape(-1, 1))  # 使用 LEEP 分数计算成对距离
+
+    if cond_distance_matrix.size == 0:
+        raise ValueError("Distance matrix is empty. Check LEEP scores for validity.")
+    print(f"Distance Matrix: {cond_distance_matrix}")
+
+    # 绘制任务之间的距离矩阵
+    plot_distance_matrix_leep(leep_scores, dataset_names)
+
+
+def main():
+    # function_task2vec(global_classes, custom_dataset, device, BATCH_SIZE=BATCH_SIZE)
+    function_leep(global_classes, custom_dataset, device, BATCH_SIZE=BATCH_SIZE)
 
     # generate_tasks(global_classes, custom_dataset, device, BATCH_SIZE=BATCH_SIZE)
 

@@ -50,3 +50,12 @@ class CustomImageDataset(Dataset):
         print(f'Validation set has {len(validation_set)} instances')
         print(f'Classes in Subset: {classes}\n')
         return training_loader, validation_loader
+
+    def create_subset_loaders(self, classes, batch_size, shuffle=True):
+        indices = self.get_task_subset_indices(classes)
+        task_subset = Subset(self, indices)
+
+        subset_loader = DataLoader(task_subset, batch_size=batch_size, shuffle=shuffle)
+        print(f'Training set has {len(task_subset)} instances')
+        print(f'Classes in Subset: {classes}\n')
+        return subset_loader

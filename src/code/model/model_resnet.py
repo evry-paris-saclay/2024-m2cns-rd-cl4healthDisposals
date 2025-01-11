@@ -10,7 +10,7 @@ def resnet_model(global_classes, custom_dataset, device, BATCH_SIZE):
     # Load feature extractor model
     # model = models.resnet50(weights='IMAGENET1K_V1')
 
-    # Load full ResNet-50 model without pretrained weights
+    # Load full ResNet-34 model without pretrained weights
     # model = models.resnet50(weights=None)
     num_classes = len(global_classes)
     model = resnet34(num_classes=num_classes)
