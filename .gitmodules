@@ -1,0 +1,3 @@
+[submodule "src/code/task2vec"]
+	path = src/code/task2vec
+	url = https://github.com/Jiaqiii7/aws-cv-task2vec.git
