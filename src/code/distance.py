@@ -7,7 +7,7 @@ from sklearn.cluster import AgglomerativeClustering, KMeans
 from sklearn.metrics.pairwise import euclidean_distances
 
 from model.model_resnet import resnet_model
-from plot import determine_optimal_clusters_silhouette, determine_optimal_clusters
+from plot import determine_optimal_clusters_silhouette, determine_optimal_clusters, plot_similarity_matrix, plot_distance_matrix
 
 
 def extract_class_features(dataset, model, device):
@@ -26,7 +26,6 @@ def extract_class_features(dataset, model, device):
     return class_centroids
 
 
-# Cluster classes by distance
 def cluster_classes_by_distance(class_centroids, n_clusters=None):
     class_names = list(class_centroids.keys())
     centroids = np.array(list(class_centroids.values()))
@@ -50,15 +49,30 @@ def cluster_classes_by_distance(class_centroids, n_clusters=None):
     return tasks
 
 
-def generate_tasks(global_classes, custom_dataset, device, BATCH_SIZE):
+def euclidean(global_classes, custom_dataset, device, BATCH_SIZE):
     print("Training model from scratch...")
-    model = resnet_model(global_classes, custom_dataset, device, BATCH_SIZE=BATCH_SIZE)
+    # model = resnet_model(global_classes, custom_dataset, device, BATCH_SIZE=BATCH_SIZE)
+    model = torch.load('checkpoint/best_model.pth', weights_only=False)
 
     print("Extracting class features...")
     feature_extractor = nn.Sequential(*list(model.children())[:-1])
     feature_extractor.to(device)
     class_centroids = extract_class_features(custom_dataset, feature_extractor, device)
 
+    # Plot similarity matrix
+    print("Plotting similarity matrix...")
+    plot_similarity_matrix(class_centroids)
+
+    # Plot distance matrix
+    print("Plotting distance matrix...")
+    plot_distance_matrix(class_centroids)
+
+    determine_optimal_clusters_silhouette(class_centroids)
+    # determine_optimal_clusters(class_centroids, max_clusters=10)
+    generate_tasks(custom_dataset, class_centroids)
+
+
+def generate_tasks(custom_dataset, class_centroids):
     # Cluster classes into tasks
     print("Clustering classes...")
     tasks = cluster_classes_by_distance(class_centroids, n_clusters=2)
@@ -80,6 +94,3 @@ def generate_tasks(global_classes, custom_dataset, device, BATCH_SIZE):
     #     for images, labels in train_loader:
     #         print(f"Task {task_name} - Batch of images: {images.size()}, Labels: {labels}")
     #         break
-
-    determine_optimal_clusters_silhouette(class_centroids)
-    # determine_optimal_clusters(class_centroids, max_clusters=10)
