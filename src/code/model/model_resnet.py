@@ -115,24 +115,29 @@ def resnet_model_leep(taches_classes, custom_dataset, device, BATCH_SIZE):
         print(f"Train Loss: {avg_loss:.4f}, Train Accuracy: {avg_accuracy:.2f}%")
 
 
-def resnet_model_leep_val(taches_classes_cible, target_task, custom_dataset, device, BATCH_SIZE):
-    if target_task == "Tache1":
+def resnet_model_leep_val(taches_classes_cible, source_task, custom_dataset, device, BATCH_SIZE):
+    if source_task == "Tache1":
         model = torch.load('checkpoint/resnet_tache1.pth', weights_only=False)
-    elif target_task == "Tache2":
+    elif source_task == "Tache2":
         model = torch.load('checkpoint/resnet_tache2.pth', weights_only=False)
+    elif source_task == "Tache3":
+        model = torch.load('checkpoint/resnet_tache3.pth', weights_only=False)
     model.eval()
     tache_cible_loader = custom_dataset.create_subset_loaders(taches_classes_cible, batch_size=BATCH_SIZE)
 
     criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
     val_total_loss, val_total_acc, val_batches = 0, 0, 0
     labels_cible = []
     prediction_cible = []
     with torch.no_grad():
         for val_inputs, val_labels in tache_cible_loader:
+            val_mapped_labels = val_labels.clone()
+            for old_label, new_label in map_table.items():
+                val_mapped_labels[val_mapped_labels == old_label] = new_label
+
             inputs = val_inputs.to(device)
-            labels = val_labels.to(device)
+            labels = val_mapped_labels.to(device)
             labels_cible.append(list(labels.cpu().numpy()))
 
             val_outputs = model(inputs)

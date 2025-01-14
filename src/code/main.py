@@ -1,4 +1,6 @@
 import numpy as np
+import pandas as pd
+import seaborn as sns
 import torch
 from torch.utils.data import Subset, DataLoader
 
@@ -54,9 +56,9 @@ tache1_classes = ['glove_pair_latex', 'glove_pair_nitrile', 'glove_pair_surgery'
 tache2_classes = ['shoe_cover_pair', 'shoe_cover_single']
 tache3_classes = ['urine_bag', 'gauze', 'medical_cap', 'medical_glasses', 'test_tube']
 
-# global_label_mapping = {label: idx for idx, label in enumerate(global_classes)}
-# print("Global Label Mapping:", global_label_mapping)
-# custom_dataset = CustomImageDataset(data_dir=data_dir,class2idx=global_label_mapping,transform=data_transform)
+global_label_mapping = {label: idx for idx, label in enumerate(global_classes)}
+print("Global Label Mapping:", global_label_mapping)
+custom_dataset = CustomImageDataset(data_dir=data_dir,class2idx=global_label_mapping,transform=data_transform)
 
 # tache1_label_mapping = {label: global_label_mapping[label] for label in tache1_classes}
 # tache2_label_mapping = {label: global_label_mapping[label] for label in tache2_classes}
@@ -191,60 +193,6 @@ def hierarchical_clustering_with_silhouette(embeddings, max_clusters=13, metric_
 
 
 def function_leep(custom_dataset):
-    # # resnet_model(global_classes, custom_dataset, device, BATCH_SIZE=BATCH_SIZE)
-    # model = torch.load('checkpoint/best_model.pth', weights_only=False).to(device)
-    # model.eval()
-    #
-    # dataset_names = []
-    # dataset_list = []
-    # leep_scores = []  # 存储每个类的 LEEP 分数
-    #
-    # # 处理每个类，创建数据子集
-    # for class_name, class_id in global_label_mapping.items():
-    #     print(f"Processing class: {class_name}")
-    #     indices = custom_dataset.get_task_subset_indices([class_name])
-    #     if len(indices) == 0:
-    #         print(f"No samples found for class {class_name}")
-    #         continue
-    #
-    #     # subset = Subset(custom_dataset, indices)
-    #     # dataset_list.append(subset)
-    #     loader_train = custom_dataset.create_subset_loaders([class_name], batch_size=BATCH_SIZE)
-    #     dataset_names.append(class_name)
-    #     print(f"Class {class_name} has {len(indices)} samples.")
-    #
-    #     # 计算当前任务的 LEEP 分数
-    #     predictions = []
-    #     targets = []
-    #     print(f"Calculating LEEP for {class_name}")
-    #     with torch.no_grad():
-    #         for inputs, labels in loader_train:  # 使用训练集加载器
-    #             inputs = inputs.to(device)
-    #             # print(f"Input shape: {inputs.shape}")  # 检查输入形状是否正确
-    #             outputs = model(inputs)  # 获取模型预测
-    #             predictions.append(outputs.cpu().numpy())
-    #             targets.append(labels.cpu().numpy())
-    #
-    #     # 转换为 numpy 数组
-    #     predictions = np.vstack(predictions)
-    #     targets = np.concatenate(targets)
-    #
-    #     # 计算 LEEP 分数
-    #     score = leep(predictions, targets)
-    #     print(f"LEEP Score for {class_name}: {score}")
-    #     leep_scores.append(score)
-    #
-    # # 如果需要进一步分析任务相似性，可以使用 LEEP 分数构建任务间距离矩阵
-    # print("Calculating pairwise distances between tasks...")
-    # cond_distance_matrix = pdist(np.array(leep_scores).reshape(-1, 1))  # 使用 LEEP 分数计算成对距离
-    #
-    # if cond_distance_matrix.size == 0:
-    #     raise ValueError("Distance matrix is empty. Check LEEP scores for validity.")
-    # print(f"Distance Matrix: {cond_distance_matrix}")
-    #
-    # # 绘制任务之间的距离矩阵
-    # plot_distance_matrix_leep(leep_scores, dataset_names)
-
     tasks = {
         "Tache1": tache1_classes,
         "Tache2": tache2_classes,
@@ -258,13 +206,11 @@ def function_leep(custom_dataset):
             if source_task != target_task:  # 确保源任务和目标任务不同
                 print(f"Computing LEEP score from {source_task} to {target_task}...")
 
-                # 训练源任务模型
-                resnet_model_leep(tasks[source_task], custom_dataset, device, BATCH_SIZE=BATCH_SIZE)
-                prediction_cible, labels_cible = resnet_model_leep_val(tasks[target_task], target_task, custom_dataset, device,
-                                                                       BATCH_SIZE)
+                # resnet_model_leep(tasks[source_task], custom_dataset, device, BATCH_SIZE=BATCH_SIZE)
+                prediction_cible, labels_cible = resnet_model_leep_val(tasks[target_task], source_task, custom_dataset,
+                                                                       device, BATCH_SIZE)
                 score = leep(prediction_cible, labels_cible)
 
-                # 保存结果
                 leep_scores[(source_task, target_task)] = score
                 print(f"LEEP score from {source_task} to {target_task}: {score}")
 
@@ -273,18 +219,11 @@ def function_leep(custom_dataset):
     for task_pair, score in leep_scores.items():
         print(f"{task_pair[0]} -> {task_pair[1]}: {score}")
 
-    # 可视化为矩阵
-    import numpy as np
-    import pandas as pd
-    import seaborn as sns
-    import matplotlib.pyplot as plt
-
     # 构造矩阵
     score_matrix = pd.DataFrame(index=task_names, columns=task_names)
     for (source, target), score in leep_scores.items():
         score_matrix.loc[source, target] = score
 
-    # 绘制热力图
     sns.heatmap(score_matrix.astype(float), annot=True, fmt=".4f", cmap="coolwarm")
     plt.title("LEEP Scores Between Tasks")
     plt.xlabel("Target Task")
@@ -293,28 +232,28 @@ def function_leep(custom_dataset):
 
 
 def main():
-    global_label_mapping = {label: idx for idx, label in enumerate(global_classes)}
-    print("Global Label Mapping:", global_label_mapping)
-    custom_dataset = CustomImageDataset(data_dir=data_dir, class2idx=global_label_mapping, transform=data_transform)
+    # global_label_mapping = {label: idx for idx, label in enumerate(global_classes)}
+    # print("Global Label Mapping:", global_label_mapping)
+    # custom_dataset = CustomImageDataset(data_dir=data_dir, class2idx=global_label_mapping, transform=data_transform)
     # tache3_label_mapping = {label: global_label_mapping[label] for label in tache3_classes}
 
     # euclidean(global_classes, custom_dataset, device, BATCH_SIZE=BATCH_SIZE)
 
     # embeddings = function_task2vec(tache3_label_mapping, custom_dataset, device, BATCH_SIZE=BATCH_SIZE)
-    embeddings = function_task2vec(global_label_mapping, custom_dataset, device, BATCH_SIZE=BATCH_SIZE)
-    hierarchical_clustering_with_silhouette(embeddings)
+    # embeddings = function_task2vec(global_label_mapping, custom_dataset, device, BATCH_SIZE=BATCH_SIZE)
+    # hierarchical_clustering_with_silhouette(embeddings)
 
     # function_leep(global_classes, custom_dataset, device, BATCH_SIZE=BATCH_SIZE)
     #
     # resnet_model_leep(tache1_classes, custom_dataset, device, BATCH_SIZE=BATCH_SIZE)
     # resnet_model_leep(tache2_classes, custom_dataset, device, BATCH_SIZE=BATCH_SIZE)
     # resnet_model_leep(tache3_classes, custom_dataset, device, BATCH_SIZE=BATCH_SIZE)
-    #
-    # prediction_cible, labels_cible = resnet_model_leep_val(tache2_classes, custom_dataset, device, BATCH_SIZE)
+
+    # prediction_cible, labels_cible = resnet_model_leep_val(tache3_classes, custom_dataset, device, BATCH_SIZE=BATCH_SIZE)
     # score = leep(prediction_cible, labels_cible)
     # print(f"Leep score: {score}")
-    #
-    # function_leep(custom_dataset)
+
+    function_leep(custom_dataset)
 
     # original_images, resized_images = sample_and_resize_images(data_dir, global_label_mapping)
     # show_and_save_images(original_images, resized_images, output_dir="output_images")

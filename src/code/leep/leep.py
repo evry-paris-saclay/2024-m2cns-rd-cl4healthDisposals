@@ -38,9 +38,9 @@ def log_expected_empirical_prediction(predictions: np.ndarray, labels: np.ndarra
     empirical_prob = np.array([predict[label] for predict, label in zip(empirical_prediction, labels)])
 
     # Clip to avoid invalid log values
-    # epsilon = 1e-10  # A small constant for numerical stability
-    # empirical_prob = np.clip(empirical_prob, epsilon, 1.0)
-    print(empirical_prob)
+    epsilon = 1e-10  # A small constant for numerical stability
+    empirical_prob = np.clip(empirical_prob, epsilon, 1.0)
+    # print(empirical_prob)
 
     # Compute LEEP score
     score = np.mean(np.log(empirical_prob))
