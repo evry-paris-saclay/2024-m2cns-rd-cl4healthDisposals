@@ -22,6 +22,7 @@ map_table = {
     12: 4,
 }
 
+
 def resnet_model(global_classes, custom_dataset, device, BATCH_SIZE):
     min_loss = float('inf')
     # Load feature extractor model
@@ -61,6 +62,7 @@ def resnet_model(global_classes, custom_dataset, device, BATCH_SIZE):
             min_loss = avg_loss
             torch.save(model, f"/Users/jiaqifeng/PycharmProjects/Python_RD/checkpoint/best_model.pth")
             print(f"Model saved with Loss: {min_loss:.4f}")
+    return model
 
 
 def resnet_model_leep(taches_classes, custom_dataset, device, BATCH_SIZE):

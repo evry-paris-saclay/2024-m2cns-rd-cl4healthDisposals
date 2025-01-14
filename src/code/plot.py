@@ -100,6 +100,7 @@ def plot_confusion_matrix(all_labels, all_predictions, class_names):
     plt.show()
 
 
+# matrix euclid
 def plot_similarity_matrix(class_centroids, labels=None, title="Class Similarity Matrix", save_path="results/similarity_matrix.png"):
     class_names = list(class_centroids.keys())
     centroids = np.array(list(class_centroids.values()))
@@ -146,6 +147,7 @@ def plot_distance_matrix(class_centroids, labels=None, title="Class Distance Mat
     plt.show()
 
 
+# silhouette euclid
 def determine_optimal_clusters_silhouette(class_centroids, max_clusters=12):
     centroids = np.array(list(class_centroids.values()))
     distance_matrix = euclidean_distances(centroids, centroids)
@@ -185,12 +187,17 @@ def determine_optimal_clusters(class_centroids, max_clusters=10):
     plt.show()
 
 
-def plot_silhouette_scores(silhouette_scores, max_clusters=5):
+# silhouette task2vec
+def plot_silhouette_scores(silhouette_scores, max_clusters=5, save_path="results/task2vec_silhouette.png"):
     plt.figure(figsize=(8, 6))
-    # plt.plot(list(silhouette_scores.keys()), list(silhouette_scores.values()), marker='o')
-    plt.plot(range(2, max_clusters + 1), silhouette_scores, marker='o')
-    plt.title("Silhouette Score vs Number of Clusters")
+    plt.plot(list(silhouette_scores.keys()), list(silhouette_scores.values()), marker='o')
+    # plt.plot(range(2, max_clusters + 1), silhouette_scores, marker='o')
+    plt.title("Silhouette Score")
     plt.xlabel("Number of Clusters")
     plt.ylabel("Silhouette Score")
     plt.grid(True)
+
+    if save_path:
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+
     plt.show()

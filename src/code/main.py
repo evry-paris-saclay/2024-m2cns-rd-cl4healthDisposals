@@ -54,9 +54,9 @@ tache1_classes = ['glove_pair_latex', 'glove_pair_nitrile', 'glove_pair_surgery'
 tache2_classes = ['shoe_cover_pair', 'shoe_cover_single']
 tache3_classes = ['urine_bag', 'gauze', 'medical_cap', 'medical_glasses', 'test_tube']
 
-global_label_mapping = {label: idx for idx, label in enumerate(global_classes)}
-print("Global Label Mapping:", global_label_mapping)
-custom_dataset = CustomImageDataset(data_dir=data_dir,class2idx=global_label_mapping,transform=data_transform)
+# global_label_mapping = {label: idx for idx, label in enumerate(global_classes)}
+# print("Global Label Mapping:", global_label_mapping)
+# custom_dataset = CustomImageDataset(data_dir=data_dir,class2idx=global_label_mapping,transform=data_transform)
 
 # tache1_label_mapping = {label: global_label_mapping[label] for label in tache1_classes}
 # tache2_label_mapping = {label: global_label_mapping[label] for label in tache2_classes}
@@ -150,7 +150,8 @@ def function_task2vec(global_label_mapping, custom_dataset, device, BATCH_SIZE=B
         print(f"Embedding {name}")
         probe_network = model.to(device)
         embedding = Task2Vec(probe_network, max_samples=1000, skip_layers=6).embed(dataset)
-        print(f"Embedding for {name}: Hessian shape: {embedding.hessian.shape}, Scale shape: {embedding.scale.shape}")
+        print(
+            f"Embedding for {name}: Hessian shape: {embedding.hessian.shape}, Scale shape: {embedding.scale.shape}")
         embeddings.append(embedding)
         print(f"embedding: {embedding}")
         print(f"embeddings: {embeddings}")
@@ -168,25 +169,28 @@ def function_task2vec(global_label_mapping, custom_dataset, device, BATCH_SIZE=B
     return embeddings
 
 
-def hierarchical_clustering_with_silhouette(embeddings, max_clusters=5, metric_distance='cosine'):
-    hessian_array = np.array([embedding.hessian for embedding in embeddings])
-    print(f"hessian: {hessian_array}")
-    embeddings_array = np.array(embeddings)
-    distance_matrix = task_similarity.pdist(embeddings_array, distance=metric_distance)
+def hierarchical_clustering_with_silhouette(embeddings, max_clusters=13, metric_distance='cosine'):
+    distance_matrix = task_similarity.pdist(embeddings, distance=metric_distance)
+    print("distance_matrix", distance_matrix)
+    print("distance_matrix", distance_matrix.shape)
+
     cond_distance_matrix = squareform(distance_matrix, checks=False)
+    print("cond_distance_matrix", cond_distance_matrix)
+    print("cond_distance_matrix", cond_distance_matrix.shape)
+
     linkage_matrix = linkage(cond_distance_matrix, method='complete', optimal_ordering=True)
-    silhouette_scores = []
+    silhouette_scores = {}
     for k in range(2, max_clusters + 1):  # 聚类数从 2 到 max_clusters
         cluster_labels = fcluster(linkage_matrix, k, criterion='maxclust')  # 生成聚类标签
-        score = silhouette_score(hessian_array, cluster_labels, metric=metric_distance)
-        # silhouette_scores[k] = score
-        print(f"labels: {cluster_labels}, score: {score}")
-        silhouette_scores.append(score)
-    # best_k = max(silhouette_scores, key=silhouette_scores.get)
+        print(cluster_labels)
+        score = silhouette_score(distance_matrix, cluster_labels, metric=metric_distance)
+        print(score)
+        silhouette_scores[k] = score
+    best_k = max(silhouette_scores, key=silhouette_scores.get)
     plot_silhouette_scores(silhouette_scores)
 
 
-def function_leep():
+def function_leep(custom_dataset):
     # # resnet_model(global_classes, custom_dataset, device, BATCH_SIZE=BATCH_SIZE)
     # model = torch.load('checkpoint/best_model.pth', weights_only=False).to(device)
     # model.eval()
@@ -256,12 +260,8 @@ def function_leep():
 
                 # 训练源任务模型
                 resnet_model_leep(tasks[source_task], custom_dataset, device, BATCH_SIZE=BATCH_SIZE)
-
-                # 获取目标任务的预测和标签
                 prediction_cible, labels_cible = resnet_model_leep_val(tasks[target_task], target_task, custom_dataset, device,
                                                                        BATCH_SIZE)
-
-                # 计算 LEEP 分数
                 score = leep(prediction_cible, labels_cible)
 
                 # 保存结果
@@ -293,26 +293,28 @@ def function_leep():
 
 
 def main():
-    # global_label_mapping = {label: idx for idx, label in enumerate(global_classes)}
-    # print("Global Label Mapping:", global_label_mapping)
-    # custom_dataset = CustomImageDataset(data_dir=data_dir, class2idx=global_label_mapping, transform=data_transform)
+    global_label_mapping = {label: idx for idx, label in enumerate(global_classes)}
+    print("Global Label Mapping:", global_label_mapping)
+    custom_dataset = CustomImageDataset(data_dir=data_dir, class2idx=global_label_mapping, transform=data_transform)
     # tache3_label_mapping = {label: global_label_mapping[label] for label in tache3_classes}
 
-    euclidean(global_classes, custom_dataset, device, BATCH_SIZE=BATCH_SIZE)
-    # embeddings = function_task2vec(tache3_label_mapping, custom_dataset, device, BATCH_SIZE=BATCH_SIZE)
-    # embeddings = function_task2vec(global_label_mapping, custom_dataset, device, BATCH_SIZE=BATCH_SIZE)
-    # hierarchical_clustering_with_silhouette(embeddings)
-    # function_leep(global_classes, custom_dataset, device, BATCH_SIZE=BATCH_SIZE)
+    # euclidean(global_classes, custom_dataset, device, BATCH_SIZE=BATCH_SIZE)
 
+    # embeddings = function_task2vec(tache3_label_mapping, custom_dataset, device, BATCH_SIZE=BATCH_SIZE)
+    embeddings = function_task2vec(global_label_mapping, custom_dataset, device, BATCH_SIZE=BATCH_SIZE)
+    hierarchical_clustering_with_silhouette(embeddings)
+
+    # function_leep(global_classes, custom_dataset, device, BATCH_SIZE=BATCH_SIZE)
+    #
     # resnet_model_leep(tache1_classes, custom_dataset, device, BATCH_SIZE=BATCH_SIZE)
     # resnet_model_leep(tache2_classes, custom_dataset, device, BATCH_SIZE=BATCH_SIZE)
     # resnet_model_leep(tache3_classes, custom_dataset, device, BATCH_SIZE=BATCH_SIZE)
-
+    #
     # prediction_cible, labels_cible = resnet_model_leep_val(tache2_classes, custom_dataset, device, BATCH_SIZE)
     # score = leep(prediction_cible, labels_cible)
     # print(f"Leep score: {score}")
-
-    # function_leep()
+    #
+    # function_leep(custom_dataset)
 
     # original_images, resized_images = sample_and_resize_images(data_dir, global_label_mapping)
     # show_and_save_images(original_images, resized_images, output_dir="output_images")
