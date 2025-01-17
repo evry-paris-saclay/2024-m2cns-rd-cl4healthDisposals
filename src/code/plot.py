@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from scipy.spatial.distance import squareform
 from sklearn.metrics import confusion_matrix
 
 from sklearn.cluster import AgglomerativeClustering, KMeans
@@ -101,20 +102,23 @@ def plot_confusion_matrix(all_labels, all_predictions, class_names):
 
 
 # matrix euclid
-def plot_similarity_matrix(class_centroids, labels=None, title="Class Similarity Matrix", save_path="results/similarity_matrix.png"):
+def plot_similarity_matrix(class_centroids,  title="Class Similarity Matrix", save_path="results/euclid_similarity_matrix.png"):
     class_names = list(class_centroids.keys())
     centroids = np.array(list(class_centroids.values()))
 
     distance_matrix = euclidean_distances(centroids, centroids)
+    condensed_distance = squareform(distance_matrix)
     max_distance = np.max(distance_matrix)
     similarity_matrix = 1 - (distance_matrix / max_distance)
-    linkage_matrix = linkage(distance_matrix, method='complete', optimal_ordering=True)
+    linkage_matrix = linkage(condensed_distance, method='complete', optimal_ordering=True)
 
-    if labels is None:
-        labels = class_names
-
-    similarity_df = pd.DataFrame(similarity_matrix, index=labels, columns=labels)
-    cluster_grid = sns.clustermap(similarity_df, row_linkage=linkage_matrix, col_linkage=linkage_matrix, cmap='viridis_r')
+    similarity_df = pd.DataFrame(similarity_matrix, index=class_names, columns=class_names)
+    cluster_grid = sns.clustermap(similarity_df,
+                                  # row_cluster=False,
+                                  # col_cluster=True,
+                                  row_linkage=linkage_matrix,
+                                  col_linkage=linkage_matrix,
+                                  cmap='viridis_r')
     # cluster_grid.ax_heatmap.set_title(title)
     cluster_grid.ax_heatmap.set_xlabel("Classes")
     cluster_grid.ax_heatmap.set_ylabel("Classes")
@@ -125,18 +129,22 @@ def plot_similarity_matrix(class_centroids, labels=None, title="Class Similarity
     plt.show()
 
 
-def plot_distance_matrix(class_centroids, labels=None, title="Class Distance Matrix", save_path="results/distance_matrix.png"):
+def plot_distance_matrix(class_centroids, title="Class Distance Matrix", save_path="results/euclid_distance_matrix.png"):
     class_names = list(class_centroids.keys())
     centroids = np.array(list(class_centroids.values()))
 
     distance_matrix = euclidean_distances(centroids, centroids)
-    linkage_matrix = linkage(distance_matrix, method='complete', optimal_ordering=True)
+    condensed_distance = squareform(distance_matrix)
+    linkage_matrix = linkage(condensed_distance, method='complete', optimal_ordering=True)
 
-    if labels is None:
-        labels = class_names
 
-    distance_df = pd.DataFrame(distance_matrix, index=labels, columns=labels)
-    cluster_grid = sns.clustermap(distance_df, row_linkage=linkage_matrix, col_linkage=linkage_matrix, cmap='viridis_r')
+    distance_df = pd.DataFrame(distance_matrix, index=class_names, columns=class_names)
+    cluster_grid = sns.clustermap(distance_df,
+                                  # row_cluster=False,
+                                  # col_cluster=True,
+                                  row_linkage=linkage_matrix,
+                                  col_linkage=linkage_matrix,
+                                  cmap='viridis_r')
     # cluster_grid.ax_heatmap.set_title(title)
     cluster_grid.ax_heatmap.set_xlabel("Classes")
     cluster_grid.ax_heatmap.set_ylabel("Classes")
@@ -148,7 +156,7 @@ def plot_distance_matrix(class_centroids, labels=None, title="Class Distance Mat
 
 
 # silhouette euclid
-def determine_optimal_clusters_silhouette(class_centroids, max_clusters=12):
+def plot_determine_optimal_clusters_silhouette(class_centroids, max_clusters=12, save_path="results/euclid_silhouette.png"):
     centroids = np.array(list(class_centroids.values()))
     distance_matrix = euclidean_distances(centroids, centroids)
     silhouette_scores = []
@@ -163,6 +171,10 @@ def determine_optimal_clusters_silhouette(class_centroids, max_clusters=12):
     plt.xlabel('Number of Clusters')
     plt.ylabel('Silhouette Score')
     plt.title('Silhouette Method')
+
+    if save_path:
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+
     plt.show()
 
     # Return the optimal number of clusters

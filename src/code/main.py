@@ -7,6 +7,7 @@ from torch.utils.data import Subset, DataLoader
 from custom_dataset import CustomImageDataset
 import random
 import os
+import pickle
 from PIL import Image
 import matplotlib.pyplot as plt
 from torchvision import transforms, datasets
@@ -19,6 +20,7 @@ from leep.leep import log_expected_empirical_prediction as leep
 # Compute distance matrix
 from scipy.spatial.distance import pdist, squareform
 from scipy.cluster.hierarchy import linkage, fcluster
+from sklearn.manifold import TSNE
 from sklearn.metrics import silhouette_score
 from sklearn.cluster import KMeans
 
@@ -181,38 +183,66 @@ def hierarchical_clustering_with_silhouette(embeddings, max_clusters=13, metric_
     print("cond_distance_matrix", cond_distance_matrix.shape)
 
     linkage_matrix = linkage(cond_distance_matrix, method='complete', optimal_ordering=True)
+
     silhouette_scores = {}
     for k in range(2, max_clusters + 1):  # 聚类数从 2 到 max_clusters
         cluster_labels = fcluster(linkage_matrix, k, criterion='maxclust')  # 生成聚类标签
-        print(cluster_labels)
+        # print(f"cluster_labels : {cluster_labels}")
         score = silhouette_score(distance_matrix, cluster_labels, metric=metric_distance)
         print(score)
         silhouette_scores[k] = score
     best_k = max(silhouette_scores, key=silhouette_scores.get)
     plot_silhouette_scores(silhouette_scores)
+    return best_k, linkage_matrix
 
 
-def function_leep(custom_dataset):
-    tasks = {
-        "Tache1": tache1_classes,
-        "Tache2": tache2_classes,
-        "Tache3": tache3_classes
-    }
+def tsne(k, linkage_matrix, embeddings):
+    n_clusters = k
+    cluster_labels = fcluster(linkage_matrix, n_clusters, criterion='maxclust')  # 生成聚类标签
+    print(f"max {n_clusters} cluster_labels : {cluster_labels}")
+
+    tasks = {f"task_{label}": [] for label in list(cluster_labels)}
+    for class_name, label in zip(global_classes, list(cluster_labels)):
+        tasks[f"task_{label}"].append(class_name)
+
+    print(f"Tasks: {tasks}")
+
+    embeddings_array = np.array([embedding.hessian.flatten() for embedding in embeddings])
+    print(embeddings_array.shape)  # 输出 (n_samples, n_features)
+
+    tsne = TSNE(n_components=2, perplexity=5, random_state=42)
+    data_2d = tsne.fit_transform(embeddings_array)
+
+    plt.figure(figsize=(8, 6))
+    for cluster in range(1, n_clusters + 1):
+        cluster_points = data_2d[cluster_labels == cluster]
+        plt.scatter(cluster_points[:, 0], cluster_points[:, 1], label=f"Cluster {cluster}")
+
+    plt.title("t-SNE Visualization of Clusters")
+    plt.xlabel("t-SNE Dimension 1")
+    plt.ylabel("t-SNE Dimension 2")
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+    return tasks
+
+
+def function_leep(custom_dataset, tasks, save_path="results/leep_score.png"):
     task_names = list(tasks.keys())  # 获取任务名称
 
     leep_scores = {}
     for source_task in task_names:  # 外层循环：源任务
+        # resnet_model_leep(tasks[source_task], source_task, custom_dataset, device, BATCH_SIZE=BATCH_SIZE)
         for target_task in task_names:  # 内层循环：目标任务
             if source_task != target_task:  # 确保源任务和目标任务不同
                 print(f"Computing LEEP score from {source_task} to {target_task}...")
 
-                # resnet_model_leep(tasks[source_task], custom_dataset, device, BATCH_SIZE=BATCH_SIZE)
                 prediction_cible, labels_cible = resnet_model_leep_val(tasks[target_task], source_task, custom_dataset,
                                                                        device, BATCH_SIZE)
                 score = leep(prediction_cible, labels_cible)
 
                 leep_scores[(source_task, target_task)] = score
-                print(f"LEEP score from {source_task} to {target_task}: {score}")
+                print(f"LEEP score from {source_task} to {target_task}: {score}\n")
 
     # 打印所有任务对的 LEEP 分数
     print("\nAll LEEP scores:")
@@ -228,6 +258,10 @@ def function_leep(custom_dataset):
     plt.title("LEEP Scores Between Tasks")
     plt.xlabel("Target Task")
     plt.ylabel("Source Task")
+
+    if save_path:
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+
     plt.show()
 
 
@@ -237,31 +271,52 @@ def main():
     # custom_dataset = CustomImageDataset(data_dir=data_dir, class2idx=global_label_mapping, transform=data_transform)
     # tache3_label_mapping = {label: global_label_mapping[label] for label in tache3_classes}
 
+    # # euclid
     # euclidean(global_classes, custom_dataset, device, BATCH_SIZE=BATCH_SIZE)
 
+    # # task2vec
     # embeddings = function_task2vec(tache3_label_mapping, custom_dataset, device, BATCH_SIZE=BATCH_SIZE)
     # embeddings = function_task2vec(global_label_mapping, custom_dataset, device, BATCH_SIZE=BATCH_SIZE)
-    # hierarchical_clustering_with_silhouette(embeddings)
 
-    # function_leep(global_classes, custom_dataset, device, BATCH_SIZE=BATCH_SIZE)
-    #
-    # resnet_model_leep(tache1_classes, custom_dataset, device, BATCH_SIZE=BATCH_SIZE)
-    # resnet_model_leep(tache2_classes, custom_dataset, device, BATCH_SIZE=BATCH_SIZE)
-    # resnet_model_leep(tache3_classes, custom_dataset, device, BATCH_SIZE=BATCH_SIZE)
+    # # 保存 embeddings 到文件
+    # with open("embeddings.pkl", "wb") as f:
+    #     pickle.dump(embeddings, f)
+
+    # with open("embeddings.pkl", "rb") as f:
+    #     embeddings = pickle.load(f)
+
+    # best_k, linkage_matrix = hierarchical_clustering_with_silhouette(embeddings)
+
+    # # task2vec tsne
+    # tasks = tsne(best_k, linkage_matrix, embeddings)
+
+    # # leep
+    tasks = {
+        "Tache1": tache1_classes,
+        "Tache2": tache2_classes,
+        "Tache3": tache3_classes
+    }
+
+    # resnet_model_leep(tache1_classes, "Tache1", custom_dataset, device, BATCH_SIZE=BATCH_SIZE)
+    # resnet_model_leep(tache2_classes, "Tache2", custom_dataset, device, BATCH_SIZE=BATCH_SIZE)
+    # resnet_model_leep(tache3_classes, "Tache3", custom_dataset, device, BATCH_SIZE=BATCH_SIZE)
 
     # prediction_cible, labels_cible = resnet_model_leep_val(tache3_classes, custom_dataset, device, BATCH_SIZE=BATCH_SIZE)
     # score = leep(prediction_cible, labels_cible)
     # print(f"Leep score: {score}")
 
-    function_leep(custom_dataset)
+    function_leep(custom_dataset, tasks)
 
+    # # save images
     # original_images, resized_images = sample_and_resize_images(data_dir, global_label_mapping)
     # show_and_save_images(original_images, resized_images, output_dir="output_images")
 
+    # # experiences
     # exp_flatten(device, custom_dataset)
     # exp_specific(device, custom_dataset, tache1_classes, tache2_classes, tache3_classes, BATCH_SIZE=BATCH_SIZE)
     # exp_mtl(device, custom_dataset, tache1_classes, tache2_classes, tache3_classes, BATCH_SIZE=BATCH_SIZE)
     # exp_continual(device, custom_dataset, tache1_classes, tache2_classes, tache3_classes, BATCH_SIZE=BATCH_SIZE)
+    # exp_continual(device, custom_dataset, tasks, BATCH_SIZE=BATCH_SIZE)
 
 
 if __name__ == '__main__':

@@ -7,7 +7,7 @@ from sklearn.cluster import AgglomerativeClustering, KMeans
 from sklearn.metrics.pairwise import euclidean_distances
 
 from model.model_resnet import resnet_model
-from plot import determine_optimal_clusters_silhouette, determine_optimal_clusters, plot_similarity_matrix, plot_distance_matrix
+from plot import plot_determine_optimal_clusters_silhouette, determine_optimal_clusters, plot_similarity_matrix, plot_distance_matrix
 
 
 def extract_class_features(dataset, model, device):
@@ -67,7 +67,7 @@ def euclidean(global_classes, custom_dataset, device, BATCH_SIZE):
     print("Plotting distance matrix...")
     plot_distance_matrix(class_centroids)
 
-    determine_optimal_clusters_silhouette(class_centroids)
+    plot_determine_optimal_clusters_silhouette(class_centroids)
     # determine_optimal_clusters(class_centroids, max_clusters=10)
     generate_tasks(custom_dataset, class_centroids)
 

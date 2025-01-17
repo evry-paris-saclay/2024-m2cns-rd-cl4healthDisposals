@@ -1,3 +1,5 @@
+import os
+
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
@@ -65,7 +67,12 @@ def resnet_model(global_classes, custom_dataset, device, BATCH_SIZE):
     return model
 
 
-def resnet_model_leep(taches_classes, custom_dataset, device, BATCH_SIZE):
+def resnet_model_leep(taches_classes, source_task, custom_dataset, device, BATCH_SIZE):
+    tache1_classes = ['glove_pair_latex', 'glove_pair_nitrile', 'glove_pair_surgery',
+                      'glove_single_latex', 'glove_single_nitrile', 'glove_single_surgery']
+    tache2_classes = ['shoe_cover_pair', 'shoe_cover_single']
+    tache3_classes = ['urine_bag', 'gauze', 'medical_cap', 'medical_glasses', 'test_tube']
+
     min_loss = float('inf')
     tache_loader = custom_dataset.create_subset_loaders(taches_classes, batch_size=BATCH_SIZE)
 
@@ -108,9 +115,14 @@ def resnet_model_leep(taches_classes, custom_dataset, device, BATCH_SIZE):
         avg_accuracy = total_acc / total_batches * 100
         if avg_loss < min_loss:
             min_loss = avg_loss
-            torch.save(model, f"checkpoint/resnet_tache1.pth")
-            # torch.save(model, f"checkpoint/resnet_tache2.pth")
-            # torch.save(model, f"checkpoint/resnet_tache3.pth")
+
+            # torch.save(model, f"checkpoint/resnet_{source_task}.pth")
+            if taches_classes == tache1_classes:
+                torch.save(model, f"checkpoint/resnet_tache1.pth")
+            elif taches_classes == tache2_classes:
+                torch.save(model, f"checkpoint/resnet_tache2.pth")
+            elif taches_classes == tache3_classes:
+                torch.save(model, f"checkpoint/resnet_tache3.pth")
             print(f"Model saved with Loss: {min_loss:.4f}")
         print(f"Train Loss: {avg_loss:.4f}, Train Accuracy: {avg_accuracy:.2f}%")
 
@@ -122,6 +134,15 @@ def resnet_model_leep_val(taches_classes_cible, source_task, custom_dataset, dev
         model = torch.load('checkpoint/resnet_tache2.pth', weights_only=False)
     elif source_task == "Tache3":
         model = torch.load('checkpoint/resnet_tache3.pth', weights_only=False)
+
+    # model_filename = f"resnet_{source_task}.pth"
+    # model_path = os.path.join("checkpoint/", model_filename)
+    # model = torch.load(model_path, weights_only=False)
+
+    num_classes = len(taches_classes_cible)
+    print(model.fc)
+    model.fc = nn.Linear(model.fc.in_features, num_classes)
+    print(model.fc)
     model.eval()
     tache_cible_loader = custom_dataset.create_subset_loaders(taches_classes_cible, batch_size=BATCH_SIZE)
 
@@ -138,21 +159,24 @@ def resnet_model_leep_val(taches_classes_cible, source_task, custom_dataset, dev
 
             inputs = val_inputs.to(device)
             labels = val_mapped_labels.to(device)
+            print(f"labels: {labels}")
             labels_cible.append(list(labels.cpu().numpy()))
 
             val_outputs = model(inputs)
-            val_loss = criterion(val_outputs, labels)
-            _ , preds = torch.max(val_outputs, 1)
+            print(val_outputs.shape)
+        #     val_loss = criterion(val_outputs, labels)
+        #     _ , preds = torch.max(val_outputs, 1)
+        #     print(f"preds: {preds}")
             prediction_cible.append(list(val_outputs.cpu().numpy()))
-
-            val_acc = (preds == labels).sum().item() / labels.size(0)
-            val_total_loss += val_loss.item()
-            val_total_acc += val_acc
-            val_batches += 1
-
-        avg_val_loss = val_total_loss / val_batches
-        avg_val_acc = val_total_acc / val_batches * 100
-        print(f"Val Loss: {avg_val_loss:.4f}, Val Accuracy: {avg_val_acc:.2f}%")
+        #
+        #     val_acc = (preds == labels).sum().item() / labels.size(0)
+        #     val_total_loss += val_loss.item()
+        #     val_total_acc += val_acc
+        #     val_batches += 1
+        #
+        # avg_val_loss = val_total_loss / val_batches
+        # avg_val_acc = val_total_acc / val_batches * 100
+        # print(f"Val Loss: {avg_val_loss:.4f}, Val Accuracy: {avg_val_acc:.2f}%")
 
     prediction_cible = np.vstack(prediction_cible)
     labels_cible = np.concatenate(labels_cible)
