@@ -2,8 +2,8 @@ import torch.nn as nn
 
 BATCH_SIZE = 16
 CHANNELS_IN = 1
-HEIGHT = 40-4
-WIDTH = 64-4
+HEIGHT = 400-4
+WIDTH = 640-4
 
 
 class backbone(nn.Module):

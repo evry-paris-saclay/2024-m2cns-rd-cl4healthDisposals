@@ -22,8 +22,8 @@ def log_expected_empirical_prediction(predictions: np.ndarray, labels: np.ndarra
 
     # Ensure predictions are normalized probabilities
     predictions = predictions / predictions.sum(axis=1, keepdims=True)
-    print(predictions.shape)
-    print(labels.shape)
+    #print(predictions.shape)
+    #print(labels.shape)
 
     # Joint distribution (P(y, z))
     joint = np.zeros((C_t, C_s), dtype=float)

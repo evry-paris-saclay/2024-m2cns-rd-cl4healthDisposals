@@ -13,7 +13,7 @@ def exp_specific(device, custom_dataset, tache1_classes, tache2_classes, tache3_
 
     num_epochs = 30
     learning_rate = 0.001
-    class_input_dim = 32 * (40 - 4) * (64 - 4)
+    class_input_dim = 32 * (400 - 4) * (640 - 4)
 
     for task_idx, (train_loader, val_loader, task_classes) in enumerate([
         (tache1_loader_train, tache1_loader_val, tache1_classes),

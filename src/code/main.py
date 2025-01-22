@@ -11,7 +11,7 @@ import pickle
 from PIL import Image
 import matplotlib.pyplot as plt
 from torchvision import transforms, datasets
-from plot import plot_silhouette_scores
+from plot import plot_silhouette_scores, plot_leep_scores_ligne, plot_leep_scores_heatmap, plot_leep_scores_order
 
 from task2vec.aws_cv_task2vec.task2vec import Task2Vec
 from task2vec.aws_cv_task2vec import task_similarity
@@ -30,21 +30,25 @@ from exp.exp_flatten import exp_flatten
 from exp.exp_specific import exp_specific
 from exp.exp_mtl import exp_mtl
 from exp.exp_continual import exp_continual
+from exp.exp_continual_v2 import exp_continual_v2
 
 
-# device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-device = torch.device('mps' if torch.backends.mps.is_available() else 'cpu')  # Using this if in MacOS
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+# device = torch.device('mps' if torch.backends.mps.is_available() else 'cpu')  # Using this if in MacOS
 BATCH_SIZE = 16
 
 data_transform = transforms.Compose([
-    transforms.Resize((40, 64)),
+    transforms.Resize((400, 640)),
     transforms.ToTensor(),
     transforms.Normalize((0.5,), (0.5,))
 ])
 
-data_dir = '/Users/jiaqifeng/Downloads/Medical Waste 4.0'
+# data_dir = '/Users/jiaqifeng/Downloads/Medical Waste 4.0'
+data_dir = '/home/hungry_gould/projet/2024-m2cns-rd-cl4healthDisposals/data/Medical Waste 4.0'
 # dataset = datasets.ImageFolder(root=data_dir, transform=data_transform)
-random.seed(42)
+torch.manual_seed(0)
+random.seed(0)
+np.random.seed(0)
 
 global_classes = [
     'glove_pair_latex', 'glove_pair_nitrile', 'glove_pair_surgery',
@@ -58,9 +62,9 @@ tache1_classes = ['glove_pair_latex', 'glove_pair_nitrile', 'glove_pair_surgery'
 tache2_classes = ['shoe_cover_pair', 'shoe_cover_single']
 tache3_classes = ['urine_bag', 'gauze', 'medical_cap', 'medical_glasses', 'test_tube']
 
-global_label_mapping = {label: idx for idx, label in enumerate(global_classes)}
-print("Global Label Mapping:", global_label_mapping)
-custom_dataset = CustomImageDataset(data_dir=data_dir,class2idx=global_label_mapping,transform=data_transform)
+# global_label_mapping = {label: idx for idx, label in enumerate(global_classes)}
+# print("Global Label Mapping:", global_label_mapping)
+# custom_dataset = CustomImageDataset(data_dir=data_dir,class2idx=global_label_mapping,transform=data_transform)
 
 # tache1_label_mapping = {label: global_label_mapping[label] for label in tache1_classes}
 # tache2_label_mapping = {label: global_label_mapping[label] for label in tache2_classes}
@@ -130,9 +134,8 @@ def show_and_save_images(original_images, resized_images, output_dir="output_ima
 
 def function_task2vec(global_label_mapping, custom_dataset, device, BATCH_SIZE=BATCH_SIZE):
     # model = resnet_model(global_classes, custom_dataset, device, BATCH_SIZE=BATCH_SIZE)
-    model = torch.load('checkpoint/best_model.pth', weights_only=False)
+    model = torch.load('/home/hungry_gould/projet/2024-m2cns-rd-cl4healthDisposals/src/code/checkpoint/resnet34.pth', weights_only=False)
     model.eval()
-
     # 获取数据集中的类名及数据
     embeddings = []
     dataset_names = []
@@ -173,7 +176,7 @@ def function_task2vec(global_label_mapping, custom_dataset, device, BATCH_SIZE=B
     return embeddings
 
 
-def hierarchical_clustering_with_silhouette(embeddings, max_clusters=13, metric_distance='cosine'):
+def hierarchical_clustering_with_silhouette(embeddings, max_clusters=12, metric_distance='cosine'):
     distance_matrix = task_similarity.pdist(embeddings, distance=metric_distance)
     print("distance_matrix", distance_matrix)
     print("distance_matrix", distance_matrix.shape)
@@ -196,14 +199,14 @@ def hierarchical_clustering_with_silhouette(embeddings, max_clusters=13, metric_
     return best_k, linkage_matrix
 
 
-def tsne(k, linkage_matrix, embeddings):
+def tsne(k, linkage_matrix, embeddings, save_path="/home/hungry_gould/projet/2024-m2cns-rd-cl4healthDisposals/src/results/tsne_clustering.jpg"):
     n_clusters = k
     cluster_labels = fcluster(linkage_matrix, n_clusters, criterion='maxclust')  # 生成聚类标签
     print(f"max {n_clusters} cluster_labels : {cluster_labels}")
 
-    tasks = {f"task_{label}": [] for label in list(cluster_labels)}
+    tasks = {f"tache{label}": [] for label in list(cluster_labels)}
     for class_name, label in zip(global_classes, list(cluster_labels)):
-        tasks[f"task_{label}"].append(class_name)
+        tasks[f"tache{label}"].append(class_name)
 
     print(f"Tasks: {tasks}")
 
@@ -221,13 +224,18 @@ def tsne(k, linkage_matrix, embeddings):
     plt.title("t-SNE Visualization of Clusters")
     plt.xlabel("t-SNE Dimension 1")
     plt.ylabel("t-SNE Dimension 2")
+    
     plt.legend()
+    if save_path:
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+
     plt.grid(True)
+
     plt.show()
     return tasks
 
 
-def function_leep(custom_dataset, tasks, save_path="results/leep_score.png"):
+def function_leep(custom_dataset, tasks):
     task_names = list(tasks.keys())  # 获取任务名称
 
     leep_scores = {}
@@ -249,74 +257,134 @@ def function_leep(custom_dataset, tasks, save_path="results/leep_score.png"):
     for task_pair, score in leep_scores.items():
         print(f"{task_pair[0]} -> {task_pair[1]}: {score}")
 
-    # 构造矩阵
-    score_matrix = pd.DataFrame(index=task_names, columns=task_names)
-    for (source, target), score in leep_scores.items():
-        score_matrix.loc[source, target] = score
+    plot_leep_scores_ligne(leep_scores)
+    plot_leep_scores_heatmap(leep_scores,task_names)
+    output = trouver_order(leep_scores)
 
-    sns.heatmap(score_matrix.astype(float), annot=True, fmt=".4f", cmap="coolwarm")
-    plt.title("LEEP Scores Between Tasks")
-    plt.xlabel("Target Task")
-    plt.ylabel("Source Task")
+    sequence = output.split(" -> ")
+    ordered_tasks = {task: tasks[task] for task in sequence}
 
-    if save_path:
-        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+    print("Reordered Tasks:")
+    for task, items in ordered_tasks.items():
+        print(f"{task}: {items}")
 
-    plt.show()
+    return ordered_tasks
+    
 
+def trouver_order(leep_scores):
+    sorted_leep_scores = sorted(leep_scores.items(), key=lambda x: x[1], reverse=True)
+    # 初始化链条
+    chain = {}  # 存储链条，形式为 [(source, target, score)]
+    used_tasks = set()  # 用于记录已使用的任务
+    source_tasks= set()
+    target_tasks=set()
+    num=0
+    # 从最高分的任务对开始构建链条
+    for (source, target), score in sorted_leep_scores:
+        #第一个
+        if source not in used_tasks and target not in used_tasks:
+            #chain.append((source, target, score))
+            chain[(source, target)] = score
+            used_tasks.add(source)
+            used_tasks.add(target)
+            source_tasks.add(source)
+            target_tasks.add(target)
+            num+=1
+
+
+        if (source not in source_tasks) and (target not in target_tasks) and (source not in used_tasks or target not in used_tasks):
+            #chain.append((source, target, score))
+            chain[(source, target)] = score
+            used_tasks.add(source)
+            used_tasks.add(target)
+            source_tasks.add(source)
+            target_tasks.add(target)
+            num+=1
+
+        if num==3:
+            break
+    
+    # 输出最终的链式路径
+    print("Final Task Chain:")
+    for (source, target), score in chain.items():
+        print(f"{source} -> {target}: {score:.2e}")
+
+    sequence = []
+
+    # Extract all source and target nodes from the chain
+    source_nodes = {source for source, target in chain.keys()}
+    target_nodes = {target for source, target in chain.keys()}
+
+    # Find the starting node (not a target in any pair)
+    start_node = (source_nodes - target_nodes).pop()
+
+    # Traverse the chain to build the sequence
+    current_node = start_node
+    while current_node:
+        sequence.append(current_node)
+        next_node = next((target for (source, target) in chain.keys() if source == current_node), None)
+        if next_node is None:
+            break
+        current_node = next_node
+
+    # Join the sequence to form the output string
+    output = " -> ".join(sequence)
+    print(output)
+
+    plot_leep_scores_order(chain, output)
+    return output
 
 def main():
-    # global_label_mapping = {label: idx for idx, label in enumerate(global_classes)}
-    # print("Global Label Mapping:", global_label_mapping)
-    # custom_dataset = CustomImageDataset(data_dir=data_dir, class2idx=global_label_mapping, transform=data_transform)
+    global_label_mapping = {label: idx for idx, label in enumerate(global_classes)}
+    print("Global Label Mapping:", global_label_mapping)
+    custom_dataset = CustomImageDataset(data_dir=data_dir, class2idx=global_label_mapping, transform=data_transform)
     # tache3_label_mapping = {label: global_label_mapping[label] for label in tache3_classes}
 
+
     # # euclid
-    # euclidean(global_classes, custom_dataset, device, BATCH_SIZE=BATCH_SIZE)
+    #resnet_model(global_classes, custom_dataset, device, BATCH_SIZE)
+    #euclidean(global_classes, custom_dataset, device, BATCH_SIZE=BATCH_SIZE)
+
 
     # # task2vec
     # embeddings = function_task2vec(tache3_label_mapping, custom_dataset, device, BATCH_SIZE=BATCH_SIZE)
     # embeddings = function_task2vec(global_label_mapping, custom_dataset, device, BATCH_SIZE=BATCH_SIZE)
 
     # # 保存 embeddings 到文件
-    # with open("embeddings.pkl", "wb") as f:
+    # with open("/home/hungry_gould/projet/2024-m2cns-rd-cl4healthDisposals/src/code/embeddings.pkl", "wb") as f:
     #     pickle.dump(embeddings, f)
 
-    # with open("embeddings.pkl", "rb") as f:
-    #     embeddings = pickle.load(f)
+    with open("/home/hungry_gould/projet/2024-m2cns-rd-cl4healthDisposals/src/code/embeddings.pkl", "rb") as f:
+        embeddings = pickle.load(f)
 
-    # best_k, linkage_matrix = hierarchical_clustering_with_silhouette(embeddings)
+    best_k, linkage_matrix = hierarchical_clustering_with_silhouette(embeddings)
+
 
     # # task2vec tsne
-    # tasks = tsne(best_k, linkage_matrix, embeddings)
+    best = 4
+    tasks = tsne(best, linkage_matrix, embeddings)
 
-    # # leep
-    tasks = {
-        "Tache1": tache1_classes,
-        "Tache2": tache2_classes,
-        "Tache3": tache3_classes
-    }
+    tasks_sorted = function_leep(custom_dataset, tasks)
+    # print("tasks_sorted",tasks_sorted)
+    # with open("/home/hungry_gould/projet/2024-m2cns-rd-cl4healthDisposals/src/code/task_dict.pkl", "wb") as file:
+    #     pickle.dump(tasks_sorted, file)
 
-    # resnet_model_leep(tache1_classes, "Tache1", custom_dataset, device, BATCH_SIZE=BATCH_SIZE)
-    # resnet_model_leep(tache2_classes, "Tache2", custom_dataset, device, BATCH_SIZE=BATCH_SIZE)
-    # resnet_model_leep(tache3_classes, "Tache3", custom_dataset, device, BATCH_SIZE=BATCH_SIZE)
+    # with open("/home/hungry_gould/projet/2024-m2cns-rd-cl4healthDisposals/src/code/task_dict.pkl", "rb") as file:
+    #     tasks_sorted = pickle.load(file)
+    # print("tasks_sorted",tasks_sorted)
 
-    # prediction_cible, labels_cible = resnet_model_leep_val(tache3_classes, custom_dataset, device, BATCH_SIZE=BATCH_SIZE)
-    # score = leep(prediction_cible, labels_cible)
-    # print(f"Leep score: {score}")
-
-    function_leep(custom_dataset, tasks)
 
     # # save images
     # original_images, resized_images = sample_and_resize_images(data_dir, global_label_mapping)
     # show_and_save_images(original_images, resized_images, output_dir="output_images")
+
 
     # # experiences
     # exp_flatten(device, custom_dataset)
     # exp_specific(device, custom_dataset, tache1_classes, tache2_classes, tache3_classes, BATCH_SIZE=BATCH_SIZE)
     # exp_mtl(device, custom_dataset, tache1_classes, tache2_classes, tache3_classes, BATCH_SIZE=BATCH_SIZE)
     # exp_continual(device, custom_dataset, tache1_classes, tache2_classes, tache3_classes, BATCH_SIZE=BATCH_SIZE)
-    # exp_continual(device, custom_dataset, tasks, BATCH_SIZE=BATCH_SIZE)
+    # exp_continual_v2(device, custom_dataset, tasks_sorted, BATCH_SIZE=BATCH_SIZE)
 
 
 if __name__ == '__main__':

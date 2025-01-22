@@ -52,12 +52,16 @@ def cluster_classes_by_distance(class_centroids, n_clusters=None):
 def euclidean(global_classes, custom_dataset, device, BATCH_SIZE):
     print("Training model from scratch...")
     # model = resnet_model(global_classes, custom_dataset, device, BATCH_SIZE=BATCH_SIZE)
-    model = torch.load('checkpoint/best_model.pth', weights_only=False)
+    model = torch.load('/home/hungry_gould/projet/2024-m2cns-rd-cl4healthDisposals/src/code/checkpoint/resnet34.pth', weights_only=False)
 
     print("Extracting class features...")
     feature_extractor = nn.Sequential(*list(model.children())[:-1])
     feature_extractor.to(device)
     class_centroids = extract_class_features(custom_dataset, feature_extractor, device)
+
+    # Plot silhoette
+    print("Plotting silhouette...")
+    plot_determine_optimal_clusters_silhouette(class_centroids)
 
     # Plot similarity matrix
     print("Plotting similarity matrix...")
@@ -67,7 +71,6 @@ def euclidean(global_classes, custom_dataset, device, BATCH_SIZE):
     print("Plotting distance matrix...")
     plot_distance_matrix(class_centroids)
 
-    plot_determine_optimal_clusters_silhouette(class_centroids)
     # determine_optimal_clusters(class_centroids, max_clusters=10)
     generate_tasks(custom_dataset, class_centroids)
 

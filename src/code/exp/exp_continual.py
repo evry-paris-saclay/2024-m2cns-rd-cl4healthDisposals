@@ -41,7 +41,7 @@ def exp_continual(device, custom_dataset, tache1_classes, tache2_classes, tache3
     train_loaders = [tache1_loader_train, tache2_loader_train, tache3_loader_train]
     val_loaders = [tache1_loader_val, tache2_loader_val, tache3_loader_val]
 
-    class_input_dim = 8 * (40 - 4) * (64 - 4)
+    class_input_dim = 8 * (400 - 4) * (640 - 4)
     learning_rate = 0.001
     num_epochs = 30
     min_val_loss = float('inf')

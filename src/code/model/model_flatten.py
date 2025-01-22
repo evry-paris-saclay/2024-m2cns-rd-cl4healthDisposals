@@ -2,8 +2,8 @@ import torch.nn as nn
 
 BATCH_SIZE = 16
 CHANNELS_IN = 1
-HEIGHT = 36
-WIDTH = 60
+HEIGHT = 400-4
+WIDTH = 640-4
 
 
 class ConvModel(nn.Module):

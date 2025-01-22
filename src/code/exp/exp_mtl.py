@@ -11,7 +11,7 @@ def exp_mtl(device, custom_dataset, tache1_classes, tache2_classes, tache3_class
     tache2_loader_train, tache2_loader_val = custom_dataset.create_task_loaders(tache2_classes, batch_size=8)
     tache3_loader_train, tache3_loader_val = custom_dataset.create_task_loaders(tache3_classes, batch_size=20)
 
-    class_input_dim = 8 * (40 - 4) * (64 - 4)
+    class_input_dim = 8 * (400 - 4) * (640 - 4)
     learning_rate = 0.001
     num_epochs = 30
 
