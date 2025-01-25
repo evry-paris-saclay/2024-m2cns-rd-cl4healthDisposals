@@ -27,10 +27,10 @@ map_table = {
 }
 
 map_table_tache1 = {
-    0: 0,
-    1: 1,
-    2: 4,
     3: 7,
+    2: 4,
+    1: 1,
+    0: 0
 }
 
 map_table_tache2 = {
@@ -38,51 +38,43 @@ map_table_tache2 = {
 }
 
 map_table_tache3 = {
-    0: 9,
+    2: 12,
     1: 11,
-    2: 12
+    0: 9
 }
 
 map_table_tache4 = {
-    0: 3,
-    1: 5,
-    2: 6,
+    4: 10,
     3: 8,
-    4: 10
+    2: 6,
+    1: 5,
+    0: 3,
 }
 
 
 # def add_to_replay_buffer(inputs, labels):
-    # global replay_buffer
-    # inputs, labels = inputs.detach().cpu(), labels.detach().cpu()
+# global replay_buffer
+# inputs, labels = inputs.detach().cpu(), labels.detach().cpu()
 
-    # Iterate over each sample in the Batch and add them to the buffer one by one
-    # for i in range(inputs.size(0)):
-        # if len(replay_buffer) >= BUFFER_SIZE:
-            # replay_buffer.pop(0)  # If the buffer is full, remove the oldest sample
-        # replay_buffer.append((inputs[i], labels[i]))
+# Iterate over each sample in the Batch and add them to the buffer one by one
+# for i in range(inputs.size(0)):
+# if len(replay_buffer) >= BUFFER_SIZE:
+# replay_buffer.pop(0)  # If the buffer is full, remove the oldest sample
+# replay_buffer.append((inputs[i], labels[i]))
 
 
 # def sample_from_replay_buffer():
-    # global replay_buffer
-    # if len(replay_buffer) == 0:
-        # return None, None
+# global replay_buffer
+# if len(replay_buffer) == 0:
+# return None, None
 
-    # Randomly sample BUFFER_SAMPLE_SIZE samples
-    # sampled = random.sample(replay_buffer, min(len(replay_buffer), BUFFER_SAMPLE_SIZE))
-    # sampled_inputs, sampled_labels = zip(*sampled)
-    # return torch.stack(sampled_inputs), torch.tensor(sampled_labels)
+# Randomly sample BUFFER_SAMPLE_SIZE samples
+# sampled = random.sample(replay_buffer, min(len(replay_buffer), BUFFER_SAMPLE_SIZE))
+# sampled_inputs, sampled_labels = zip(*sampled)
+# return torch.stack(sampled_inputs), torch.tensor(sampled_labels)
 
 
-# def exp_continual(device, custom_dataset, tasks, tache1_classes, tache2_classes, tache3_classes, BATCH_SIZE):
 def exp_continual_v2(device, custom_dataset, tasks, BATCH_SIZE):
-    # tache1_loader_train, tache1_loader_val = custom_dataset.create_task_loaders(tache1_classes, batch_size=BATCH_SIZE)
-    # tache2_loader_train, tache2_loader_val = custom_dataset.create_task_loaders(tache2_classes, batch_size=BATCH_SIZE)
-    # tache3_loader_train, tache3_loader_val = custom_dataset.create_task_loaders(tache3_classes, batch_size=BATCH_SIZE)
-    #
-    # train_loaders = [tache1_loader_train, tache2_loader_train, tache3_loader_train]
-    # val_loaders = [tache1_loader_val, tache2_loader_val, tache3_loader_val]
-
     train_loaders = []
     val_loaders = []
     for key, value in tasks.items():
@@ -90,12 +82,11 @@ def exp_continual_v2(device, custom_dataset, tasks, BATCH_SIZE):
         train_loaders.append(loader_train)
         val_loaders.append(loader_val)
 
-    #print("train_loaders",train_loaders)
-
+    # print("train_loaders",train_loaders)
 
     class_input_dim = 8 * (400 - 4) * (640 - 4)
     learning_rate = 0.001
-    num_epochs = 30
+    num_epochs = 10
     min_val_loss = float('inf')
 
     train_losses_t1 = []
@@ -131,11 +122,6 @@ def exp_continual_v2(device, custom_dataset, tasks, BATCH_SIZE):
             total_batches = 0
 
             for inputs, labels in train_loader:
-                # if task_idx == 1:  # Task 2
-                #     labels = labels - 6
-                # elif task_idx == 2:  # Task 3
-                #     labels = labels - 8
-
                 mapped_labels = labels.clone()
                 for old_label, new_label in map_table.items():
                     mapped_labels[mapped_labels == old_label] = new_label
@@ -143,6 +129,7 @@ def exp_continual_v2(device, custom_dataset, tasks, BATCH_SIZE):
                 inputs = inputs.to(device)
                 labels = mapped_labels.to(device)
 
+                # print("labels",labels)
                 # Sampling from a buffer
                 # replay_inputs, replay_labels = sample_from_replay_buffer()
                 # print("replay_inputs:\n",replay_inputs)
@@ -150,10 +137,10 @@ def exp_continual_v2(device, custom_dataset, tasks, BATCH_SIZE):
 
                 # If the buffer is not empty, concatenate the buffer samples with the current task samples
                 # if replay_inputs is not None:
-                    # replay_inputs = replay_inputs.to(device)
-                    # replay_labels = replay_labels.to(device)
-                    # inputs = torch.cat([inputs, replay_inputs])
-                    # labels = torch.cat([labels, replay_labels])
+                # replay_inputs = replay_inputs.to(device)
+                # replay_labels = replay_labels.to(device)
+                # inputs = torch.cat([inputs, replay_inputs])
+                # labels = torch.cat([labels, replay_labels])
 
                 optimizer.zero_grad()
                 outputs = model(inputs, task_idx)
@@ -163,6 +150,7 @@ def exp_continual_v2(device, custom_dataset, tasks, BATCH_SIZE):
 
                 total_loss += loss.item()
                 _, preds = torch.max(outputs, 1)
+                # print("pred",preds)
                 total_acc += (preds == labels).sum().item() / labels.size(0)
                 total_batches += 1
 
@@ -194,36 +182,24 @@ def exp_continual_v2(device, custom_dataset, tasks, BATCH_SIZE):
             val_total_loss, val_total_acc, val_batches = 0, 0, 0
             with torch.no_grad():
                 for val_inputs, val_labels in val_loader:
-                    # if eval_task_idx == 1:  # Task 2
-                    #     labels = labels - 6
-                    # elif eval_task_idx == 2:  # Task 3
-                    #     labels = labels - 8
-
                     mapped_labels = val_labels.clone()
                     for old_label, new_label in map_table.items():
                         mapped_labels[mapped_labels == old_label] = new_label
 
                     inputs = val_inputs.to(device)
                     labels = mapped_labels.to(device)
-                    #print("labels",labels)
+                    # print("labels",labels)
                     val_outputs = model(inputs, eval_task_idx)
 
                     val_loss = criterion(val_outputs, labels)
 
                     _, preds = torch.max(val_outputs, 1)
-                    #print("preds",preds)
-                    
+                    # print("preds",preds)
+
                     val_acc = (preds == labels).sum().item() / labels.size(0)
                     val_total_loss += val_loss.item()
                     val_total_acc += val_acc
                     val_batches += 1
-
-                    # if eval_task_idx == 1:  # Task 2
-                    #     labels = labels + 6
-                    #     preds = preds + 6
-                    # elif eval_task_idx == 2:  # Task 3
-                    #     labels = labels + 8
-                    #     preds = preds + 8
 
                     if eval_task_idx == 0:
                         val_mapped_labels = labels.clone()
@@ -232,11 +208,13 @@ def exp_continual_v2(device, custom_dataset, tasks, BATCH_SIZE):
                             val_mapped_labels[val_mapped_labels == old_label] = new_label
                             val_mapped_preds[val_mapped_preds == old_label] = new_label
                     elif eval_task_idx == 1:
-                        val_mapped_labels = labels.clone()
-                        val_mapped_preds = preds.clone()
-                        for old_label, new_label in map_table_tache2.items():
-                            val_mapped_labels[val_mapped_labels == old_label] = new_label
-                            val_mapped_preds[val_mapped_preds == old_label] = new_label
+                        # val_mapped_labels = labels.clone()
+                        # val_mapped_preds = preds.clone()
+                        # for old_label, new_label in map_table_tache2.items():
+                        #     val_mapped_labels[val_mapped_labels == old_label] = new_label
+                        #     val_mapped_preds[val_mapped_preds == old_label] = new_label
+                        val_mapped_labels = labels + 2
+                        val_mapped_preds = preds + 2
                     elif eval_task_idx == 2:
                         val_mapped_labels = labels.clone()
                         val_mapped_preds = preds.clone()
@@ -249,6 +227,8 @@ def exp_continual_v2(device, custom_dataset, tasks, BATCH_SIZE):
                         for old_label, new_label in map_table_tache1.items():
                             val_mapped_labels[val_mapped_labels == old_label] = new_label
                             val_mapped_preds[val_mapped_preds == old_label] = new_label
+                    # print("val_mapped_labels", val_mapped_labels)
+                    # print("val_mapped_preds", val_mapped_preds)
 
                     all_preds_overall.extend(val_mapped_preds.cpu().numpy())
                     all_labels_overall.extend(val_mapped_labels.cpu().numpy())
@@ -264,15 +244,15 @@ def exp_continual_v2(device, custom_dataset, tasks, BATCH_SIZE):
             elif eval_task_idx == 2:
                 val_losses_t3.append(avg_val_loss)
                 val_accuracies_t3.append(avg_val_acc)
-            else:
+            elif eval_task_idx == 3:
                 val_losses_t1.append(avg_val_loss)
                 val_accuracies_t1.append(avg_val_acc)
             print(f"Val Loss: {avg_val_loss:.4f}, Val Accuracy: {avg_val_acc:.2f}%")
 
-            if avg_val_loss < min_val_loss:
-                min_val_loss = avg_val_loss
-                # torch.save(model.state_dict(), f"/Users/jiaqifeng/PycharmProjects/Python_RD/checkpoint/best_model_continual_task{task_idx}.pth")
-                #print(f"Model for Task {task_idx + 1} saved.")
+            # if avg_val_loss < min_val_loss:
+            #     min_val_loss = avg_val_loss
+            # torch.save(model.state_dict(), f"/Users/jiaqifeng/PycharmProjects/Python_RD/checkpoint/best_model_continual_task{task_idx}.pth")
+            # print(f"Model for Task {task_idx + 1} saved.")
 
     class_names = custom_dataset.dataset.classes
     plot_confusion_matrix(all_preds_overall, all_labels_overall, class_names)

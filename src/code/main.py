@@ -11,7 +11,7 @@ import pickle
 from PIL import Image
 import matplotlib.pyplot as plt
 from torchvision import transforms, datasets
-from plot import plot_silhouette_scores, plot_leep_scores_ligne, plot_leep_scores_heatmap, plot_leep_scores_order
+from plot import plot_silhouette_scores, plot_leep_scores_ligne, plot_leep_scores_heatmap, plot_leep_scores_order, plot_continue_V2_moyen_accuracy, plot_continue_V2_moyen_loss
 
 from task2vec.aws_cv_task2vec.task2vec import Task2Vec
 from task2vec.aws_cv_task2vec import task_similarity
@@ -31,6 +31,8 @@ from exp.exp_specific import exp_specific
 from exp.exp_mtl import exp_mtl
 from exp.exp_continual import exp_continual
 from exp.exp_continual_v2 import exp_continual_v2
+from exp.subexp_continual_v2.exp_val_loss import exp_val_loss
+from exp.subexp_continual_v2.exp_train_val import exp_train_val
 
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -46,9 +48,10 @@ data_transform = transforms.Compose([
 # data_dir = '/Users/jiaqifeng/Downloads/Medical Waste 4.0'
 data_dir = '/home/hungry_gould/projet/2024-m2cns-rd-cl4healthDisposals/data/Medical Waste 4.0'
 # dataset = datasets.ImageFolder(root=data_dir, transform=data_transform)
-torch.manual_seed(0)
-random.seed(0)
-np.random.seed(0)
+
+# torch.manual_seed(0)
+# random.seed(0)
+# np.random.seed(0)
 
 global_classes = [
     'glove_pair_latex', 'glove_pair_nitrile', 'glove_pair_surgery',
@@ -74,10 +77,22 @@ tache3_classes = ['urine_bag', 'gauze', 'medical_cap', 'medical_glasses', 'test_
 # print("Tache 3 Mapping:", tache3_label_mapping, "\n")
 
 
+def set_seed(seed=0):
+    np.random.seed(seed)
+    random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    # When running on the CUDNN backend, two further options must be set
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    # Set a fixed value for the hash seed
+    os.environ["PYTHONHASHSEED"] = str(seed)
+    print(f"Random seed set as {seed}.")
+
+
 def sample_and_resize_images(data_dir, label_mapping, num_samples_per_class=2):
     selected_images = {}
     resized_images = []
-
     for class_name, class_idx in label_mapping.items():
         class_dir = os.path.join(data_dir, class_name)
         if not os.path.exists(class_dir):
@@ -261,6 +276,9 @@ def function_leep(custom_dataset, tasks):
     plot_leep_scores_heatmap(leep_scores,task_names)
     output = trouver_order(leep_scores)
 
+    with open("/home/hungry_gould/projet/2024-m2cns-rd-cl4healthDisposals/src/code/leep_scores.pkl", "wb") as file:
+        pickle.dump(leep_scores, file)
+
     sequence = output.split(" -> ")
     ordered_tasks = {task: tasks[task] for task in sequence}
 
@@ -276,32 +294,30 @@ def trouver_order(leep_scores):
     # 初始化链条
     chain = {}  # 存储链条，形式为 [(source, target, score)]
     used_tasks = set()  # 用于记录已使用的任务
-    source_tasks= set()
-    target_tasks=set()
-    num=0
+    source_tasks = set()
+    target_tasks = set()
+    num = 0
     # 从最高分的任务对开始构建链条
     for (source, target), score in sorted_leep_scores:
-        #第一个
         if source not in used_tasks and target not in used_tasks:
-            #chain.append((source, target, score))
+            # chain.append((source, target, score))
             chain[(source, target)] = score
             used_tasks.add(source)
             used_tasks.add(target)
             source_tasks.add(source)
             target_tasks.add(target)
-            num+=1
-
+            num += 1
 
         if (source not in source_tasks) and (target not in target_tasks) and (source not in used_tasks or target not in used_tasks):
-            #chain.append((source, target, score))
+            # chain.append((source, target, score))
             chain[(source, target)] = score
             used_tasks.add(source)
             used_tasks.add(target)
             source_tasks.add(source)
             target_tasks.add(target)
-            num+=1
+            num += 1
 
-        if num==3:
+        if num == 3:
             break
     
     # 输出最终的链式路径
@@ -334,17 +350,19 @@ def trouver_order(leep_scores):
     plot_leep_scores_order(chain, output)
     return output
 
+
 def main():
+    set_seed(0)
+
     global_label_mapping = {label: idx for idx, label in enumerate(global_classes)}
     print("Global Label Mapping:", global_label_mapping)
     custom_dataset = CustomImageDataset(data_dir=data_dir, class2idx=global_label_mapping, transform=data_transform)
+
     # tache3_label_mapping = {label: global_label_mapping[label] for label in tache3_classes}
 
-
     # # euclid
-    #resnet_model(global_classes, custom_dataset, device, BATCH_SIZE)
-    #euclidean(global_classes, custom_dataset, device, BATCH_SIZE=BATCH_SIZE)
-
+    # resnet_model(global_classes, custom_dataset, device, BATCH_SIZE)
+    # euclidean(global_classes, custom_dataset, device, BATCH_SIZE=BATCH_SIZE)
 
     # # task2vec
     # embeddings = function_task2vec(tache3_label_mapping, custom_dataset, device, BATCH_SIZE=BATCH_SIZE)
@@ -354,17 +372,16 @@ def main():
     # with open("/home/hungry_gould/projet/2024-m2cns-rd-cl4healthDisposals/src/code/embeddings.pkl", "wb") as f:
     #     pickle.dump(embeddings, f)
 
-    with open("/home/hungry_gould/projet/2024-m2cns-rd-cl4healthDisposals/src/code/embeddings.pkl", "rb") as f:
-        embeddings = pickle.load(f)
+    # with open("/home/hungry_gould/projet/2024-m2cns-rd-cl4healthDisposals/src/code/embeddings.pkl", "rb") as f:
+    #     embeddings = pickle.load(f)
 
-    best_k, linkage_matrix = hierarchical_clustering_with_silhouette(embeddings)
-
+    # best_k, linkage_matrix = hierarchical_clustering_with_silhouette(embeddings)
 
     # # task2vec tsne
-    best = 4
-    tasks = tsne(best, linkage_matrix, embeddings)
+    # best = 4
+    # tasks = tsne(best, linkage_matrix, embeddings)
 
-    tasks_sorted = function_leep(custom_dataset, tasks)
+    # tasks_sorted = function_leep(custom_dataset, tasks)
     # print("tasks_sorted",tasks_sorted)
     # with open("/home/hungry_gould/projet/2024-m2cns-rd-cl4healthDisposals/src/code/task_dict.pkl", "wb") as file:
     #     pickle.dump(tasks_sorted, file)
@@ -373,11 +390,9 @@ def main():
     #     tasks_sorted = pickle.load(file)
     # print("tasks_sorted",tasks_sorted)
 
-
     # # save images
     # original_images, resized_images = sample_and_resize_images(data_dir, global_label_mapping)
     # show_and_save_images(original_images, resized_images, output_dir="output_images")
-
 
     # # experiences
     # exp_flatten(device, custom_dataset)
@@ -385,6 +400,66 @@ def main():
     # exp_mtl(device, custom_dataset, tache1_classes, tache2_classes, tache3_classes, BATCH_SIZE=BATCH_SIZE)
     # exp_continual(device, custom_dataset, tache1_classes, tache2_classes, tache3_classes, BATCH_SIZE=BATCH_SIZE)
     # exp_continual_v2(device, custom_dataset, tasks_sorted, BATCH_SIZE=BATCH_SIZE)
+
+    # # subexp5-avg
+    # val_losses_t4,val_losses_t2,val_losses_t3,val_losses_t1,val_accuracies_t4,val_accuracies_t2,val_accuracies_t3,val_accuracies_t1 = exp_continual_v2(device, custom_dataset, tasks_sorted, BATCH_SIZE=BATCH_SIZE)
+
+    # loss_acc_seed = {
+    # "loss": [val_losses_t4,val_losses_t2,val_losses_t3,val_losses_t1],
+    # "accuracy": [val_accuracies_t4,val_accuracies_t2,val_accuracies_t3,val_accuracies_t1]
+    # }
+    # with open("/home/hungry_gould/projet/2024-m2cns-rd-cl4healthDisposals/src/code/loss_acc_seed4.pkl", "wb") as file:
+    #     pickle.dump(loss_acc_seed, file)
+
+    # with open("/home/hungry_gould/projet/2024-m2cns-rd-cl4healthDisposals/src/code/loss_acc_seed0.pkl", "rb") as file:
+    #     loss_acc_seed1 = pickle.load(file)
+    # print("loss,acc:", loss_acc_seed1)
+    #
+    # with open("/home/hungry_gould/projet/2024-m2cns-rd-cl4healthDisposals/src/code/loss_acc_seed1.pkl", "rb") as file:
+    #     loss_acc_seed2 = pickle.load(file)
+    # print("loss,acc:", loss_acc_seed2)
+    #
+    # with open("/home/hungry_gould/projet/2024-m2cns-rd-cl4healthDisposals/src/code/loss_acc_seed2.pkl", "rb") as file:
+    #     loss_acc_seed3 = pickle.load(file)
+    # print("loss,acc:", loss_acc_seed3)
+    #
+    # with open("/home/hungry_gould/projet/2024-m2cns-rd-cl4healthDisposals/src/code/loss_acc_seed3.pkl", "rb") as file:
+    #     loss_acc_seed4 = pickle.load(file)
+    # print("loss,acc:", loss_acc_seed4)
+    #
+    # with open("/home/hungry_gould/projet/2024-m2cns-rd-cl4healthDisposals/src/code/loss_acc_seed4.pkl", "rb") as file:
+    #     loss_acc_seed5 = pickle.load(file)
+    # print("loss,acc:", loss_acc_seed5)
+
+    # loss_lists = [
+    #     loss_acc_seed1['loss'],
+    #     loss_acc_seed2['loss'],
+    #     loss_acc_seed3['loss'],
+    #     loss_acc_seed4['loss'],
+    #     loss_acc_seed5['loss']
+    # ]
+    # loss_arrays = np.array(loss_lists)
+    # avg_loss = np.mean(loss_arrays, axis=0)
+    # plot_continue_V2_moyen_loss(avg_loss)
+    #
+    # accuracy_lists = [
+    #     loss_acc_seed1['accuracy'],
+    #     loss_acc_seed2['accuracy'],
+    #     loss_acc_seed3['accuracy'],
+    #     loss_acc_seed4['accuracy'],
+    #     loss_acc_seed5['accuracy']
+    # ]
+    # accuracy_arrays = np.array(accuracy_lists)
+    # avg_accuracy = np.mean(accuracy_arrays, axis=0)
+    # plot_continue_V2_moyen_accuracy(avg_accuracy)
+
+    # # subexp5
+    # with open("/home/hungry_gould/projet/2024-m2cns-rd-cl4healthDisposals/src/code/leep_scores.pkl", "rb") as file:
+    #     leep_scores = pickle.load(file)
+
+    # exp_train_val(device, leep_scores, custom_dataset, tasks_sorted, BATCH_SIZE=BATCH_SIZE)
+
+    # exp_val_loss(device, custom_dataset, tasks_sorted, BATCH_SIZE=BATCH_SIZE)
 
 
 if __name__ == '__main__':
